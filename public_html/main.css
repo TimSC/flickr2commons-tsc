@@ -1,0 +1,28 @@
+#results_table > tbody > tr > td {
+	vertical-align:top;
+	border-bottom:1px solid #DDDDDD;
+	margin:2px;
+	padding:2px;
+	padding-top:5px;
+}
+
+
+.upload_failed {
+	background-color:#FF4848;
+}
+
+.upload_running {
+	background-color:#A8E4FF;
+}
+
+.upload_ok {
+	background-color:#7CEB98;
+}
+
+.initial_hidden {
+	display:none;
+}
+
+.transfer_result {
+	display:none;
+}

@@ -1,0 +1,58 @@
+<link rel="stylesheet" type="text/css" href="./main.css" />
+<!--<script src="../js/flot/jquery.flot.min.js"></script>-->
+
+<div class="row">
+	<div class="span9" style='margin-top:10px'>
+		
+		<div id='tusc_container_wrapper'></div>
+		
+		<form class="well form-inline" id='theform'>
+
+			<formset>
+				<table class='table table-condensed'>
+					<tr>
+						<th class='span5'>Flickr user ID or name,</th>
+						<td><input type='text' class='span6' id='user_id' rel='tooltip' title='Insert the user NSID (the one with "@", preferred) or user name here' /></td>
+					</tr>
+					<tr>
+						<th class='span5'>OR Flickr photoset ID</th>
+						<td><input type='text' class='span6' id='photoset_id' rel='tooltip' title='Insert the numeric set ID ("/in/set-######/") here. Only used when no user ID or name is entered.' /></td>
+					</tr>
+					<tr>
+						<th class='span5'>OR single Flickr photo ID</th>
+						<td><input type='text' class='span6' id='photo_id' rel='tooltip' title='Insert the numeric Flickr photo ID here. Only used when no user ID/name or photoset is entered.' /></td>
+					</tr>
+					<tr>
+						<th class='span5'>Max pictures</th>
+						<td><input type='text' class='span6' id='max_pics' rel='tooltip' title='Gets only the first N pictures from Flickr. Leave blank for "unlimited".' />
+						</td>
+					</tr>
+				</table>
+			</formset>
+			
+			<div style='text-align:right'>
+				<button id='b_run' class='btn-primary' onclick='runTool();return false'><i class='icon-play icon-white'></i> Run</button>
+			</div>
+
+		</form>
+		
+	</div>
+<!--	<div class="span3">
+		<h3>Examples</h3>
+		<div class='well'>
+			<ul class='nav'>
+				<li><a href='#' onclick='showExample("Computational Biology");return false'>Computational Biology</a></li>
+				<li><a href='#' onclick='showExample("spaceflight");return false'>Spaceflight</a></li>
+			</ul>
+		</div>
+	</div>-->
+</div>
+
+
+<div class="row" id='result_container'>
+	<form class='form-inline'>
+	<div class="span12" id='loading' style='display:none'><i>Loading data...</i><br/><span id='loaded'></span></div>
+	<div class="span12" id='results' style='display:none'></div>
+	</form>
+</div>
+
