@@ -172,7 +172,9 @@ function showResults() {
 	h += "<div id='transfer_params'>" 
 	h += "<table class='table table-condensed'>" ;
 //	h += "<tr><th class='span3'>Before/after title</th><td class='span6'><input title=\"Don't forget the spaces!\" type='text' id='title_before'/>_TITLE_<input type='text' id='title_after' title=\"Don't forget the spaces!\"/></td></tr>" ;
-	h += "<tr><th>Add to every description</th><td><textarea class='span6' rows=3 id='desc_add'></textarea></td></tr>" ;
+	h += "<tr><th>Add to every description</th><td><textarea class='span6' rows=3 id='desc_add'></textarea>" ;
+	h += "<br/><label class='checkbox'><input type='checkbox' id='no_auto_desc' /> Do not use automatic description from Flickr</label>" ;
+	h += "</td></tr>" ;
 	h += "<tr><th>Append everywhere (categories etc.)<br/><a href='#' id='add_cat'>Add category</a></th><td><textarea class='span6' rows=3 id='info_add'></textarea></td></tr>" ;
 	h += "<tr><td/><td><button onclick='initiateUpload();return false' class='btn-primary'><i class='icon-arrow-right icon-white'></i> Transfer selected files to Commons</button></td></tr>" ;
 	h += "</table>" ;
@@ -460,10 +462,10 @@ function getFreeCommonsTitle ( key , num ) {
 }
 
 function uploadToCommons ( key , title , desc ) {
-	var desc_add = $('#desc_add').val() ;
+//	var desc_add = $('#desc_add').val() ;
 	var info_add = $('#info_add').val() ;
 
-	if ( desc_add != '' ) desc = desc.replace ( '|Source=' , "<br/>" + desc_add + "\n|Source=" ) ;
+//	if ( desc_add != '' ) desc = desc.replace ( /\|\s*Source=/ , "<br/>" + desc_add + "\n| Source=" ) ;
 	if ( info_add != '' ) desc = desc + "\n" + info_add ;
 	
 	if ( verbose ) console.log ( "Uploading... " + title ) ;
@@ -549,9 +551,18 @@ function transferFile ( key , title ) {
 			doUpload() ; // Next
 			return ;
 		}
+
+		var final_desc = ( d.wiki.info.desc || '' ) ;
+		if ( manual_desc == '' && $('#no_auto_desc').is(':checked') ) final_desc = '' ;
+		var desc_add = $('#desc_add').val() ;
+		if ( desc_add != '' ) {
+			if ( final_desc != '' ) final_desc += "<br/>\n" ;
+			final_desc += desc_add + "\n" ;
+//			final_desc = desc.replace ( /\|\s*Source=/ , "<br/>" + desc_add + "\n| Source=" ) ;
+		}
 		
 		var w = "{{Information\n" ;
-		w += "| Description = " + ( d.wiki.info.desc || '' ) + "\n" ;
+		w += "| Description = " + final_desc + "\n" ;
 		w += "| Source      = " + ( d.wiki.info.source || '' ) + "\n" ;
 		w += "* Uploaded by [[User:" + tusc.user + "|" + tusc.user + "]]\n" ;
 		w += "| Date        = " + ( d.wiki.info.date || '' ) + "\n" ;
@@ -575,6 +586,8 @@ function transferFile ( key , title ) {
 		} ) ;
 		
 		w = $.trim ( w ) ;
+		
+		if ( testing ) { console.log ( w ) ; return ; }
 		
 		uploadToCommons ( key , title , w ) ;
 		
