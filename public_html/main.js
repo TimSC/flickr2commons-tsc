@@ -199,7 +199,7 @@ function showResults() {
 		
 		h += "<tr id='photo_row_" + k + "' key='" + k + "' class='prow'>" ;
 		h += "<td><input class='useit' type='checkbox' checked /></td>" ;
-		h += "<td><a href='" + p.flickr_page + "' target='_blank'><img border=0 class='pthumb' /></a></td>" ;
+		h += "<td nowrap><a href='" + p.flickr_page + "' target='_blank'><img border=0 class='pthumb' /></a></td>" ;
 		h += "<td class='descbox'>" ;
 		h += "<a target='_blank' href='" + p.flickr_page + "'><b class='ptitle'></b></a> " ;
 		h += "<span style='color:#999999'>(" + p.id + ")</span>" ;
