@@ -52,7 +52,7 @@ function preRunClear () {
 function getUserImagesByNSID ( nsid ) {
 	preRunClear () ;
 	var params = {
-		method : 'flickr.people.getPublicPhotos' ,
+		method : 'flickr.photos.search' ,
 		result_key : 'photos' ,
 		user_id : nsid
 	} ;
@@ -134,6 +134,9 @@ function getFlickrImages ( params , page ) {
 	var max_pics = ($('#max_pics').val()||999999999) ;
 	if ( page === undefined ) page = 1 ;
 	
+	var tags = $('#flickr_tags').val() ;
+	if ( tags != '' ) params.tags = tags ;
+	
 	params.api_key = flickr_api_key ;
 	params.extras = 'description,license,date_taken,geo,tags,url_o,url_l,url_m,url_q,url_s,path_alias' ;
 	params.per_page = max_pics<500?max_pics:500 ;
@@ -141,6 +144,11 @@ function getFlickrImages ( params , page ) {
 	params.format = 'json' ;
 	
 	$.getJSON ( flickr_api_url+'/?jsoncallback=?' , params , function ( d ) {
+		if ( d.stat == 'fail' ) {
+			$('#loading').hide() ;
+			alert ( d.message ) ;
+			return ;
+		}
 		$.each ( d[params.result_key].photo , function ( k , v ) {
 			if ( undefined === flicker_license[v.license] ) return ; // No free license
 			
@@ -288,6 +296,16 @@ function updateFileExistStatus ( v ) {
 	} ) ;
 }
 
+function prefixSelectedFileNames() {
+	var pre = prompt ( "String to put in front of all selected filenames (space will be added)" ) ;
+	if ( pre == null || pre == '' ) return ;
+	$("input.useit:checked").each ( function () {
+		var tr = $($(this).parents('tr').get(0)) ;
+		var i = $('input.newtitle',tr) ;
+		i.val ( pre + ' ' + i.val() ) ;
+	} ) ;
+}
+
 function showTagFilter() {
 	var h = "<div class='well well-small' id='tag_filter_container'><form class='form-inline'><div>" ;
 	h += "<label><input type='radio' name='tag_mark' value='1' checked /> Select</label>/" ;
@@ -300,7 +318,8 @@ function showTagFilter() {
 	h += "<button class='btn-info'>Change selections</button>" ;
 	h += "</div><div>" ;
 	h += "<button class='btn-info' onclick='$(\"#results input.useit[type=checkbox]\").attr(\"checked\",true); return false'>Select all</button> " ;
-	h += "<button class='btn-info' onclick='$(\"#results input.useit[type=checkbox]\").removeAttr(\"checked\"); return false'>Deselect all</button>" ;
+	h += "<button class='btn-info' onclick='$(\"#results input.useit[type=checkbox]\").removeAttr(\"checked\"); return false'>Deselect all</button> " ;
+	h += "<button class='btn-info' onclick='prefixSelectedFileNames(); return false'>Prefix selected names</button>" ;
 	h += " <span id='tag_filter_message'></span></div>" ;
 	h += "<div style='margin-top:2px'>Auto-detect categories: " ;
 	h += "<button class='btn-info' onclick='$(\"input.auto_cats\").attr(\"checked\",true);return false'>Yes</button> " ;
@@ -392,11 +411,6 @@ var max_tranfer ;
 var done_transfer ;
 
 function initiateUpload () {
-	if ( !tusc.logged_in ) {
-		alert ( "You need to log into TUSC first!" ) ;
-		return ;
-	}
-
 	var h = '<div class="progress progress-striped active">' ;
 	h += '<div class="bar" id="progress_bar" style="width: 0%;"></div>' ;
 	h += '</div>' ;
@@ -469,28 +483,27 @@ function uploadToCommons ( key , title , desc ) {
 	if ( info_add != '' ) desc = desc + "\n" + info_add ;
 	
 	if ( verbose ) console.log ( "Uploading... " + title ) ;
-	
+
 	var params = {
-		tusc_user : tusc.user ,
-		tusc_password : tusc.pass ,
-		url : photos[key].url_best ,
-		new_name : title ,
-		hotfix : 1 ,
-		source : 'Flickr' ,
-		desc : desc
+		action:'upload',
+		newfile:title,
+		url:photos[key].url_best,
+		desc:desc,
+		comment:'Transferred from Flickr',
+		botmode:1
 	} ;
-	console.log ( params ) ;
+//	console.log ( params ) ;
 	
 	
-	$.post ( '/magnustools/php/upload_from_url.php' , params , function ( d ) {
+	$.post ( '/magnustools/oauth_uploader.php?rand='+Math.random() , params , function ( d ) {
 		var tr = "<tt>" + title + "</tt>" ;
-		if ( d.status == 'OK' ) {
+		if ( d.error == 'OK' ) {
 			tr = "Now at : <a target='_blank' href='//commons.wikimedia.org/wiki/File:" + escape ( title ) + "'>" + tr + "</a>" ;
 			$('#photo_row_'+key).removeClass('upload_running').addClass('upload_ok') ;
 		} else {
 			$('#photo_row_'+key).removeClass('upload_running').addClass('upload_failed') ;
-			var s = d.status ;
-			if ( d.note !== undefined ) s += " (" + d.note + ")" ;
+			var s = d.error ;
+//			if ( d.note !== undefined ) s += " (" + d.note + ")" ;
 			tr += "<br/><b>Transfer failed : " + s + "</b>" ;
 		}
 		if ( verbose ) console.log("complete : " + title ); 
@@ -524,7 +537,7 @@ function transferFile ( key , title ) {
 	var params = {
 		id : photos[key].id ,
 		admin : 'File Upload Bot (Magnus Manske)' ,
-		uploading_user : tusc.user ,
+//		uploading_user : tusc.user ,
 		raw : 'on' ,
 		format : 'json'
 	} ;
@@ -564,7 +577,6 @@ function transferFile ( key , title ) {
 		var w = "{{Information\n" ;
 		w += "| Description = " + final_desc + "\n" ;
 		w += "| Source      = " + ( d.wiki.info.source || '' ) + "\n" ;
-		w += "* Uploaded by [[User:" + tusc.user + "|" + tusc.user + "]]\n" ;
 		w += "| Date        = " + ( d.wiki.info.date || '' ) + "\n" ;
 		w += "| Author      = " + ( d.wiki.info.author || '' ) + "\n" ;
 		w += "| Permission  = " + ( d.wiki.info.permission || '' ) + "\n" ;
@@ -610,33 +622,36 @@ function showExample ( mode , data ) {
 
 $(document).ready ( function () {
 	loadMenuBarAndContent ( { toolname : 'Flickr2commons' , meta : 'Flickr2commons' , content : 'form.html' , run : function () {
-		tusc.setupLoginBar ( $('#tusc_container_wrapper') , function () {
 			wikiDataCache.ensureSiteInfo ( [ { lang:'commons' , project:'wikimedia' } ] , function () {
 	
-				$('#toolname').html ( "Flickr-to-Commons" ) ;
-				tusc.initializeTUSC () ;
-				tusc.addTUSC2toolbar() ;
-	
-				$('#user_id').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
-				$('#photoset_id').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
-				$('#photo_id').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
-				$('#max_pics').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
-				$('.initial_hidden').hide() ;
-				$('.initial_hidden input').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
-				
-				$('#user_id').focus() ;
-				
-				var params = getUrlVars() ;
-				if ( undefined !== params.tusc_user ) $('#tusc_user').val ( decodeURIComponent(params.tusc_user) ) ;
-				if ( undefined !== params.tusc_pass ) $('#tusc_pass').val ( decodeURIComponent(params.tusc_pass) ) ;
-				if ( undefined !== params.maxpics ) $('#max_pics').val ( params.maxpics ) ;
-				testing = ( undefined !== params.testing ) ;
-				
-				if ( undefined !== params.userid ) { showExample(1,params.userid) ; }
-				else if ( undefined !== params.photoset ) { showExample(2,params.photoset) ; }
-				else if ( undefined !== params.photoid ) { showExample(3,params.photoid) ; }
-				
-			} ) ;
+			$('#toolname').html ( "Flickr-to-Commons" ) ;
+//			tusc.initializeTUSC () ;
+//			tusc.addTUSC2toolbar() ;
+
+			$('#user_id').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
+			$('#photoset_id').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
+			$('#photo_id').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
+			$('#flickr_tags').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
+			$('#max_pics').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
+			$('.initial_hidden').hide() ;
+			$('.initial_hidden input').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
+			
+			$('#user_id').focus() ;
+			
+			var params = getUrlVars() ;
+			if ( undefined !== params.userid ) $('#user_id').val ( params.userid ) ;
+			if ( undefined !== params.maxpics ) $('#max_pics').val ( params.maxpics ) ;
+			if ( undefined !== params.tags ) $('#flickr_tags').val ( params.tags ) ;
+			testing = ( undefined !== params.testing ) ;
+			
+			if ( testing ) return ;
+			
+			if ( undefined !== params.userid ) { showExample(1,params.userid) ; }
+			else if ( undefined !== params.photoset ) { showExample(2,params.photoset) ; }
+			else if ( undefined !== params.photoid ) { showExample(3,params.photoid) ; }
+			
 		} ) ;
 	} } )
 } ) ;
+
+//		tusc.setupLoginBar ( $('#tusc_container_wrapper') , function () { } ) ;

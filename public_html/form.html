@@ -10,6 +10,7 @@
 
 			<formset>
 				<table class='table table-condensed'>
+					<tr><td colspan=2><b style='color:red'>ATTENTION!</b> This tool uses OAuth to upload files to Commons. Make sure you <a target='_blank' href='http://tools.wmflabs.org/magnustools/oauth_uploader.php'>authorise first</a>!</td></tr>
 					<tr>
 						<th class='span5'>Flickr user ID or name,</th>
 						<td><input type='text' class='span6' id='user_id' rel='tooltip' title='Insert the user NSID (the one with "@", preferred) or user name here' /></td>
@@ -21,6 +22,10 @@
 					<tr>
 						<th class='span5'>OR single Flickr photo ID</th>
 						<td><input type='text' class='span6' id='photo_id' rel='tooltip' title='Insert the numeric Flickr photo ID here. Only used when no user ID/name or photoset is entered.' /></td>
+					</tr>
+					<tr>
+						<th class='span5'>Flickr tag (optional)</th>
+						<td><input type='text' class='span6' id='flickr_tags' rel='tooltip' title='Only files with all of these (comma-separated) tags will be shown.' /></td>
 					</tr>
 					<tr>
 						<th class='span5'>Max pictures</th>
