@@ -128,7 +128,14 @@ function getSinglePhoto ( pid ) {
 	} ) ;
 }
 
-
+function getSignature ( params ) {
+	var keys = [] ;
+	$.each ( params , function ( k , v ) { keys.push ( k ) } ) ;
+	keys.sort() ;
+	var s = '' ;
+	$.each ( keys , function ( dummy , key ) { s += key + params[key] } ) ;
+	return md5(escape(s)) ;
+}
 
 function getFlickrImages ( params , page ) {
 	var max_pics = ($('#max_pics').val()||999999999) ;
@@ -137,11 +144,15 @@ function getFlickrImages ( params , page ) {
 	var tags = $('#flickr_tags').val() ;
 	if ( tags != '' ) params.tags = tags ;
 	
+//	params.safe_search = 2 ;
 	params.api_key = flickr_api_key ;
 	params.extras = 'description,license,date_taken,geo,tags,url_o,url_l,url_m,url_q,url_s,path_alias' ;
 	params.per_page = max_pics<500?max_pics:500 ;
 	params.page = page ;
 	params.format = 'json' ;
+	
+//	params.api_sig = getSignature ( params ) ; // Does not work
+
 	
 	$.getJSON ( flickr_api_url+'/?jsoncallback=?' , params , function ( d ) {
 		if ( d.stat == 'fail' ) {
@@ -197,6 +208,7 @@ function showResults() {
 	h += "<table id='results_table' cellspacing=0 cellpadding=0>" ;
 	$.each ( photos , function ( k , p ) {
 		p.flickr_page = 'http://www.flickr.com/photos/' + p.owner + '/' + p.id ;
+		if ( p.owner === undefined ) p.flickr_page = "https://secure.flickr.com/photo.gne?id=" + p.id ;
 		
 		$.each ( p.tags.split(' ') , function ( k2 , tag ) {
 			if ( tag.match ( /^\d+$/ ) ) return ; // No "pure number" tags
@@ -251,7 +263,8 @@ function showResults() {
 	$.each ( photos , function ( k , p ) {
 		var id = '#photo_row_' + k ;
 		var o = $(id) ;
-		o.find('input.newtitle').val ( p.title.replace(/\.jpe{0,1}g$/,'').replace(/\[/g,'(').replace(/\]/g,')') + " (" + p.id + ").jpg" ) ;
+		var ntr = p.title.replace(/\.jpe{0,1}g$/,'').replace(/\[/g,'(').replace(/\]/g,')').replace(/[\|\/\#\:]/g,'-') ;
+		o.find('input.newtitle').val ( ntr + " (" + p.id + ").jpg" ) ;
 		o.find('input.newtitle').keyup ( function () { updateFileExistStatus ( $($(this).parents('td')).get(0) ) } ) ;
 		o.find('.ptitle').html ( p.title ) ;
 		o.find('.pdesc').html ( p.description['_content'] ) ;
@@ -489,7 +502,7 @@ function uploadToCommons ( key , title , desc ) {
 		newfile:title,
 		url:photos[key].url_best,
 		desc:desc,
-		comment:'Transferred from Flickr',
+		comment:'Transferred from Flickr via Flickr2commons',
 		botmode:1
 	} ;
 //	console.log ( params ) ;
@@ -502,9 +515,16 @@ function uploadToCommons ( key , title , desc ) {
 			$('#photo_row_'+key).removeClass('upload_running').addClass('upload_ok') ;
 		} else {
 			$('#photo_row_'+key).removeClass('upload_running').addClass('upload_failed') ;
-			var s = d.error ;
-//			if ( d.note !== undefined ) s += " (" + d.note + ")" ;
-			tr += "<br/><b>Transfer failed : " + s + "</b>" ;
+			var s = [ d.error ] ;
+			$.each ( (((d.res||{}).upload||{}).warnings||{}) , function ( k3 , v3 ) {
+				if ( typeof v2 == 'array' ) {
+					s.push ( k3 + ': ' + v3.join('; ') ) ;
+				} else {
+					s.push ( k3 + ': ' + v3 ) ;
+				}
+			} ) ;
+			tr += "<br/><b>Transfer failed [1] : " + s.join('/') + "</b>" ;
+//			console.log ( d ) ;
 		}
 		if ( verbose ) console.log("complete : " + title ); 
 		if ( verbose ) console.log ( d ) ;
@@ -518,7 +538,7 @@ function uploadToCommons ( key , title , desc ) {
 	.error(function(x) {
 		$('#photo_row_'+key).removeClass('upload_running').addClass('upload_failed') ;
 		var tr = "<tt>" + title + "</tt>" ;
-		tr += "<br/><b>Transfer failed : " + x.status + " " + x.statusText + "</b>" ;
+		tr += "<br/><b>Transfer failed [2] : " + x.status + " " + x.statusText + "</b>" ;
 		$('#photo_row_'+key+' div.transfer_result').show().html(tr);
 		concurrent_uploads-- ;
 		done_transfer++ ;
@@ -536,7 +556,7 @@ function transferFile ( key , title ) {
 
 	var params = {
 		id : photos[key].id ,
-		admin : 'File Upload Bot (Magnus Manske)' ,
+//		admin : 'File Upload Bot (Magnus Manske)' ,
 //		uploading_user : tusc.user ,
 		raw : 'on' ,
 		format : 'json'
@@ -621,6 +641,9 @@ function showExample ( mode , data ) {
 }
 
 $(document).ready ( function () {
+	if ( window.location.protocol == 'https:' ) { // Force-redirect to http, to use flinfo
+		window.location = window.location.href.replace(/^https:/,'http:') ;
+	}
 	loadMenuBarAndContent ( { toolname : 'Flickr2commons' , meta : 'Flickr2commons' , content : 'form.html' , run : function () {
 			wikiDataCache.ensureSiteInfo ( [ { lang:'commons' , project:'wikimedia' } ] , function () {
 	
