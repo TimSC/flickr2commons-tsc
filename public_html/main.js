@@ -502,7 +502,7 @@ function uploadToCommons ( key , title , desc ) {
 		newfile:title,
 		url:photos[key].url_best,
 		desc:desc,
-		comment:'Transferred from Flickr via Flickr2commons',
+		comment:'Transferred from Flickr via [[Commons:Flickr2Commons|Flickr2Commons]]',
 		botmode:1
 	} ;
 //	console.log ( params ) ;
@@ -571,7 +571,8 @@ function transferFile ( key , title ) {
 	else if ( !auto_cats ) params.categories = ' ' ; // No auto categories
 	
 
-	$.getJSON ( "http://wikipedia.ramselehof.de/flinfo.php?callback=?" , params , function ( d ) {
+//	$.getJSON ( "http://wikipedia.ramselehof.de/flinfo.php?callback=?" , params , function ( d ) {
+	$.get ( 'flinfo_proxy.php' , params , function ( d ) {
 		
 		if ( undefined === d.wiki || d.wiki.status != 0 ) {
 			var err = "Flinfo issue " + d.wiki.status ;
@@ -623,7 +624,7 @@ function transferFile ( key , title ) {
 		
 		uploadToCommons ( key , title , w ) ;
 		
-	} ) ;
+	} , 'json' ) ;
 
 }
 
@@ -641,9 +642,9 @@ function showExample ( mode , data ) {
 }
 
 $(document).ready ( function () {
-	if ( window.location.protocol == 'https:' ) { // Force-redirect to http, to use flinfo
+/*	if ( window.location.protocol == 'https:' ) { // Force-redirect to http, to use flinfo
 		window.location = window.location.href.replace(/^https:/,'http:') ;
-	}
+	}*/
 	loadMenuBarAndContent ( { toolname : 'Flickr2commons' , meta : 'Flickr2commons' , content : 'form.html' , run : function () {
 			wikiDataCache.ensureSiteInfo ( [ { lang:'commons' , project:'wikimedia' } ] , function () {
 	
