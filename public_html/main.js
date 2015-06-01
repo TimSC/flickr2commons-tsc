@@ -556,6 +556,7 @@ function transferFile ( key , title ) {
 		setTimeout ( function () {
 			transferFile ( key , title ) ;
 		} , 1000 ) ;
+		return ;
 	}
 	running++ ;
 
