@@ -548,7 +548,17 @@ function uploadToCommons ( key , title , desc ) {
 	
 }
 
+var max_concurrent = 2 ;
+var running = 0 ;
+
 function transferFile ( key , title ) {
+	if ( running >= max_concurrent ) {
+		setTimeout ( function () {
+			transferFile ( key , title ) ;
+		} , 1000 ) ;
+	}
+	running++ ;
+
 	$('#photo_row_'+key+' input.newtitle').val(title) ;
 	
 	var debug_title = photos[key].id + " / " + title ;
@@ -581,6 +591,7 @@ function transferFile ( key , title ) {
 			$('#photo_row_'+key).removeClass('upload_running').addClass('upload_failed') ;
 			concurrent_uploads-- ;
 			done_transfer++ ;
+			running-- ;
 			updateProgressBar() ;
 			doUpload() ; // Next
 			return ;
@@ -621,9 +632,10 @@ function transferFile ( key , title ) {
 		
 		w = $.trim ( w ) ;
 		
-		if ( testing ) { console.log ( w ) ; return ; }
+		if ( testing ) { console.log ( w ) ; running-- ; return ; }
 		
 		uploadToCommons ( key , title , w ) ;
+		running-- ;
 		
 	} , 'json' ) ;
 
