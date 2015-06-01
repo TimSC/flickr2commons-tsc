@@ -207,7 +207,7 @@ function showResults() {
 	h += "<div id='commons_lookup' >Checking Commons for existing files... <span class='count'></span></div>" ;
 	h += "<table id='results_table' cellspacing=0 cellpadding=0>" ;
 	$.each ( photos , function ( k , p ) {
-		p.flickr_page = 'http://www.flickr.com/photos/' + p.owner + '/' + p.id ;
+		p.flickr_page = 'https://www.flickr.com/photos/' + p.owner + '/' + p.id ;
 		if ( p.owner === undefined ) p.flickr_page = "https://secure.flickr.com/photo.gne?id=" + p.id ;
 		
 		$.each ( p.tags.split(' ') , function ( k2 , tag ) {
