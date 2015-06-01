@@ -595,7 +595,8 @@ function transferFile ( key , title ) {
 //			final_desc = desc.replace ( /\|\s*Source=/ , "<br/>" + desc_add + "\n| Source=" ) ;
 		}
 		
-		var w = "{{Information\n" ;
+		var w = "== {{int:filedesc}} ==\n" ;
+		w += "{{Information\n" ;
 		w += "| Description = " + final_desc + "\n" ;
 		w += "| Source      = " + ( d.wiki.info.source || '' ) + "\n" ;
 		w += "| Date        = " + ( d.wiki.info.date || '' ) + "\n" ;
