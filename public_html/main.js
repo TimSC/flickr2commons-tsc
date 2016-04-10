@@ -461,6 +461,7 @@ function getFreeCommonsTitle ( key , num ) {
 //	title = $('#title_before').val() + title + $('#title_after').val() ;
 //	title += " (" + photos[key].id + ")" ;
 	var title = $('#photo_row_'+key+' input.newtitle').val() ;
+	title = title.replace ( /\s+/ , ' ' ) ;
 	if ( num > 1 ) {
 		title = title.replace(/\.jpe{0,1}g$/i,'') + ' (' + num + ').jpg' ;
 	}
@@ -523,6 +524,7 @@ function uploadToCommons ( key , title , desc ) {
 					s.push ( k3 + ': ' + v3 ) ;
 				}
 			} ) ;
+			if ( typeof (((d.res||{}).error||{}).info) != 'undefined' ) s.push ( d.res.error.info ) ;
 			tr += "<br/><b>Transfer failed [1] : " + s.join('/') + "</b>" ;
 //			console.log ( d ) ;
 		}
