@@ -28,6 +28,21 @@ var flickr_api_url = 'https://secure.flickr.com/services/rest' ;
 
 function getUserImagesByName ( name ) {
 	$.getJSON ( flickr_api_url+'/?jsoncallback=?' , {
+		method : 'flickr.urls.lookupUser' ,
+		api_key : flickr_api_key ,
+		url : 'https://www.flickr.com/photos/'+name ,
+		format : 'json'
+	} , function ( d ) {
+		if ( typeof d.user != 'undefined' && typeof d.user.id != 'undefined' ) {
+			$('#user_id').val ( d.user.id ) ;
+			getUserImagesByNSID ( d.user.id ) ;
+		} else {
+			alert ( "Could not identify Flickr user " + name + ". Please use the user NSID." ) ;
+		}
+	} ) ;
+
+/*
+	$.getJSON ( flickr_api_url+'/?jsoncallback=?' , {
 		method : 'flickr.people.findByUsername' ,
 		api_key : flickr_api_key ,
 		username : name ,
@@ -40,6 +55,7 @@ function getUserImagesByName ( name ) {
 			alert ( "Could not identify Flickr user " + name + ". Please use the user NSID." ) ;
 		}
 	} ) ;
+*/
 }
 
 function preRunClear () {
