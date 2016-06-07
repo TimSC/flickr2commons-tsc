@@ -158,8 +158,11 @@ function getFlickrImages ( params , page ) {
 	if ( page === undefined ) page = 1 ;
 	
 	var tags = $('#flickr_tags').val() ;
-	if ( tags != '' ) params.tags = tags ;
-	
+	if ( tags != '' ) {
+		params.tags = tags ;
+		params.tag_mode = 'all' ;
+	}
+
 //	params.safe_search = 2 ;
 	params.api_key = flickr_api_key ;
 	params.extras = 'description,license,date_taken,geo,tags,url_o,url_l,url_m,url_q,url_s,path_alias' ;
