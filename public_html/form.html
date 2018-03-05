@@ -10,32 +10,32 @@
 
 			<formset>
 				<table class='table table-condensed'>
-					<tr><td colspan=2><b style='color:red'>ATTENTION!</b> This tool uses OAuth to upload files to Commons. Make sure you <a target='_blank' href='http://tools.wmflabs.org/magnustools/oauth_uploader.php?action=authorize'>authorise first</a>!</td></tr>
+					<tr><td colspan=2><span id='auth_warning' tt='auth_warning'></span></td></tr>
 					<tr>
-						<th class='span5'>Flickr user ID or name,</th>
-						<td><input type='text' class='span6' id='user_id' rel='tooltip' title='Insert the user NSID (the one with "@", preferred) or user name here' /></td>
+						<th class='span5' tt='flickr_id'></th>
+						<td><input type='text' class='form-control bs4' id='user_id' rel='tooltip' tt_title='flickr_id_tt' /></td>
 					</tr>
 					<tr>
-						<th class='span5'>OR Flickr photoset ID</th>
-						<td><input type='text' class='span6' id='photoset_id' rel='tooltip' title='Insert the numeric set ID ("/in/set-######/") here. Only used when no user ID or name is entered.' /></td>
+						<th class='span5' tt='flickr_photoset_id'></th>
+						<td><input type='text' class='form-control bs4' id='photoset_id' rel='tooltip' tt_title='flickr_photoset_tt' /></td>
 					</tr>
 					<tr>
-						<th class='span5'>OR single Flickr photo ID</th>
-						<td><input type='text' class='span6' id='photo_id' rel='tooltip' title='Insert the numeric Flickr photo ID here. Only used when no user ID/name or photoset is entered.' /></td>
+						<th class='span5' tt='flickr_photo_id'></th>
+						<td><input type='text' class='form-control bs4' id='photo_id' rel='tooltip' tt_title='flickr_photo_tt' /></td>
 					</tr>
 					<tr>
-						<th class='span5'>Flickr tag (optional)</th>
-						<td><input type='text' class='span6' id='flickr_tags' rel='tooltip' title='Only files with all of these (comma-separated) tags will be shown.' /></td>
+						<th class='span5' tt='flickr_tag'></th>
+						<td><input type='text' class='form-control bs4' id='flickr_tags' rel='tooltip' tt_title='flickr_tag_tt' /></td>
 					</tr>
 					<tr>
-						<th class='span5'>Max pictures</th>
-						<td><input type='number' class='span6' id='max_pics' rel='tooltip' title='Gets only the first N pictures from Flickr. Leave blank for "unlimited".' />
+						<th class='span5' tt='max_pictures'></th>
+						<td><input type='number' class='form-control bs4' id='max_pics' rel='tooltip' tt_title='max_pictures_tt' />
 						</td>
 					</tr>
 				</table>
 			</formset>
 			
-			<button id='b_run' class='btn btn-primary' onclick='runTool();return false'> Run</button>
+			<button id='b_run' class='btn btn-primary' onclick='runTool();return false' tt='run'></button>
 
 		</form>
 		
@@ -49,13 +49,5 @@
 			</ul>
 		</div>
 	</div>-->
-</div>
-
-
-<div class="row" id='result_container'>
-	<form class='form-inline'>
-	<div class="span12" id='loading' style='display:none'><i>Loading data...</i><br/><span id='loaded'></span></div>
-	<div class="span12" id='results' style='display:none'></div>
-	</form>
 </div>
 

@@ -20,7 +20,7 @@ function runTool () {
 	} else if ( phid != '' ) {
 		getSinglePhoto ( phid ) ;
 	} else {
-		alert ( "You gotta give me SOMETHING to work with here, man!" ) ;
+		alert ( tt.t('nothing2work_with') ) ;
 	}
 }
 
@@ -37,7 +37,8 @@ function getUserImagesByName ( name ) {
 			$('#user_id').val ( d.user.id ) ;
 			getUserImagesByNSID ( d.user.id ) ;
 		} else {
-			alert ( "Could not identify Flickr user " + name + ". Please use the user NSID." ) ;
+			var msg = tt.t('cannot_id_user').replace('$1',name) ;
+			alert ( msg ) ;
 		}
 	} ) ;
 
@@ -191,7 +192,9 @@ function getFlickrImages ( params , page ) {
 			photos.push ( v ) ;
 			if ( photos.length >= max_pics ) return false ;
 		} ) ;
-		$('#loaded').html ( photos.length + " of ca. " + d[params.result_key].total + " pictures checked for compatible licenses" ) ;
+		var msg = "<span tt='pictures_checked' tt1='"+photos.length+"' tt2='"+d[params.result_key].total+"'></span>" ;
+		$('#loaded').html ( msg ) ;
+		tt.updateInterface ( $('#loaded') ) ;
 		if ( d[params.result_key].pages > d[params.result_key].page && photos.length < max_pics ) getFlickrImages ( params , page+1 ) ; // Get 'em all
 		else showResults() ;
 	} ) ;
@@ -201,7 +204,7 @@ function showResults() {
 
 	if ( photos.length == 0 ) {
 		$('#loading').hide() ;
-		$('#results').html ( "No suitable photos found. Maybe they are not under a free license?" ) .show() ;
+		$('#results').html ( tt.t('no_photos_found') ) .show() ;
 		return ;
 	}
 
@@ -209,12 +212,12 @@ function showResults() {
 	
 	h += "<div id='transfer_params'>" 
 	h += "<table class='table table-condensed'>" ;
-//	h += "<tr><th class='span3'>Before/after title</th><td class='span6'><input title=\"Don't forget the spaces!\" type='text' id='title_before'/>_TITLE_<input type='text' id='title_after' title=\"Don't forget the spaces!\"/></td></tr>" ;
-	h += "<tr><th>Add to every description</th><td><textarea class='span6' rows=3 id='desc_add'></textarea>" ;
-	h += "<br/><label class='checkbox'><input type='checkbox' id='no_auto_desc' /> Do not use automatic description from Flickr</label>" ;
+//	h += "<tr><th class='span3'>Before/after title</th><td class='form-control bs4'><input title=\"Don't forget the spaces!\" type='text' id='title_before'/>_TITLE_<input type='text' id='title_after' title=\"Don't forget the spaces!\"/></td></tr>" ;
+	h += "<tr><th tt='add2every_desc'></th><td><textarea class='form-control bs4' rows=3 id='desc_add'></textarea>" ;
+	h += "<br/><label class='checkbox'><input type='checkbox' id='no_auto_desc' tt='no_auto_desc' /></label>" ;
 	h += "</td></tr>" ;
-	h += "<tr><th>Append everywhere (categories etc.)<br/><a href='#' id='add_cat'>Add category</a></th><td><textarea class='span6' rows=3 id='info_add'></textarea></td></tr>" ;
-	h += "<tr><td/><td><button onclick='initiateUpload();return false' class='btn-primary'><i class='icon-arrow-right icon-white'></i> Transfer selected files to Commons</button></td></tr>" ;
+	h += "<tr><th><span tt='append_everywhere'></span><br/><a href='#' id='add_cat' tt='add_category'></a></th><td><textarea class='form-control bs4' rows=3 id='info_add'></textarea></td></tr>" ;
+	h += "<tr><td/><td><button onclick='initiateUpload();return false' class='btn btn-primary'><i class='icon-arrow-right icon-white'></i> <span tt='transfer2commons'></span></button></td></tr>" ;
 	h += "</table>" ;
 	h += "</div>" ;
 
@@ -222,8 +225,8 @@ function showResults() {
 	
 	tag2photo = {} ;
 	
-	if ( photos.length > max_files_for_thumbnails ) h += "<div><i>More than " + max_files_for_thumbnails + " files, not displaying thumbnails. Your browser will thank you.</i></div>" ;
-	h += "<div id='commons_lookup' >Checking Commons for existing files... <span class='count'></span></div>" ;
+	if ( photos.length > max_files_for_thumbnails ) h += "<div><i tt='hit_file_limit' tt1='"+max_files_for_thumbnails+"'></i></div>" ;
+	h += "<div id='commons_lookup'><span tt='commons_lookup'></span> <span class='count'></span></div>" ;
 	h += "<table id='results_table' cellspacing=0 cellpadding=0>" ;
 	$.each ( photos , function ( k , p ) {
 		p.flickr_page = 'https://www.flickr.com/photos/' + p.owner + '/' + p.id ;
@@ -243,15 +246,15 @@ function showResults() {
 		h += "<a target='_blank' href='" + p.flickr_page + "'><b class='ptitle'></b></a> " ;
 		h += "<span style='color:#999999'>(" + p.id + ")</span>" ;
 		h += "<br/>" ;
-		h += "<input class='newtitle span6' type='text' /><br/>" ;
+		h += "<input class='newtitle form-control bs4' type='text' /><br/>" ;
 		h += p.datetaken + " / " ;
 		if ( undefined !== p.width_o ) h += p.width_o + "&times;" + p.height_o + "px / " ;
 		h += flicker_license[p.license] ;
 		h += "<div><i>" + p.tags + "</i></div>" ;
 		h += "<div><table border=0>" ;
-		h += "<tr><td>Description</td><td><textarea title='Overrides automatic description' class='manual_desc span6' rows=2></textarea></td></tr>" ;
-		h += "<tr><td>Categories</td><td><textarea title='No category prefix; one category per row; overrides automatic category detection' class='manual_cats span6' rows=2></textarea></td></tr>" ;
-		h += "<tr><td/><td><label><input type='checkbox' class='auto_cats' checked /> Automatically detect categories if none are given manually</label></td></tr>" ;
+		h += "<tr><td tt='description'></td><td><textarea tt_title='description_tt' class='manual_desc form-control bs4' rows=2></textarea></td></tr>" ;
+		h += "<tr><td tt='categories'></td><td><textarea tt_title='categories_tt' class='manual_cats form-control bs4' rows=2></textarea></td></tr>" ;
+		h += "<tr><td/><td><label><input type='checkbox' class='auto_cats' /> <span tt='auto_cats'></span></label></td></tr>" ;
 		h += "</table></div>" ;
 		h += "<span class='pdesc'></span>" ;
 		h += "<div class='transfer_result'></div>" ;
@@ -262,9 +265,10 @@ function showResults() {
 
 	$('#loading').hide() ;
 	$('#results').html ( h ) ;
+	tt.updateInterface ( $('#results') ) ;
 	
 	$('#add_cat').click ( function () {
-		var p = prompt ( 'Enter a category to add:' ) ;
+		var p = prompt ( tt.t('category2add') ) ;
 		if ( p == null ) return ;
 		var info_add = $('#info_add').val() ;
 		var s = $.trim(info_add) ;
@@ -322,14 +326,14 @@ function updateFileExistStatus ( v ) {
 	var wp = new WikiPage ( { lang:'commons' , project:'wikimedia' , title:title , ns:6 } ) ;
 	wp.checkExists ( function () { // Yes
 		if ( $($(v).find('div.file_exists_warning')).length > 0 ) return ;
-		$(v).prepend ( "<div class='file_exists_warning' style='float:right' title='A file with that name exists on Commons!'><img src='//upload.wikimedia.org/wikipedia/commons/8/88/Red_triangle_alert_icon.png' width='20px' /></div>" ) ;
+		$(v).prepend ( "<div class='file_exists_warning' style='float:right' tt_title='file_exists_warning'><img src='//upload.wikimedia.org/wikipedia/commons/8/88/Red_triangle_alert_icon.png' width='20px' /></div>" ) ;
 	} , function () { // No
 		$($(v).find('div.file_exists_warning')).remove() ;
 	} ) ;
 }
 
 function prefixSelectedFileNames() {
-	var pre = prompt ( "String to put in front of all selected filenames (space will be added)" ) ;
+	var pre = prompt ( tt.t('prefix_string') ) ;
 	if ( pre == null || pre == '' ) return ;
 	$("input.useit:checked").each ( function () {
 		var tr = $($(this).parents('tr').get(0)) ;
@@ -340,26 +344,27 @@ function prefixSelectedFileNames() {
 
 function showTagFilter() {
 	var h = "<div class='well well-small' id='tag_filter_container'><form class='form-inline'><div>" ;
-	h += "<label><input type='radio' name='tag_mark' value='1' checked /> Select</label>/" ;
-	h += "<label><input type='radio' name='tag_mark' value='0' /> de-select</label>" ;
+	h += "<label><input type='radio' name='tag_mark' value='1' checked /> <span tt='select'></span></label>/" ;
+	h += "<label><input type='radio' name='tag_mark' value='0' /> <span tt='de-select'></span></label>" ;
 	h += " all photos " ;
-	h += "<label><input type='radio' name='tag_with' value='1' checked /> with</label>/" ;
-	h += "<label><input type='radio' name='tag_with' value='0' /> without</label>" ;
-	h += " tag " ;
+	h += "<label><input type='radio' name='tag_with' value='1' checked /> <span tt='with'></span></label>/" ;
+	h += "<label><input type='radio' name='tag_with' value='0' /> <span tt='without'></span></label>" ;
+	h += " <span tt='tag'></span> " ;
 	h += "<select id='tag'></select> " ;
-	h += "<button class='btn-info'>Change selections</button>" ;
+	h += "<button class='btn btn-info' tt='change_selections'></button>" ;
 	h += "</div><div>" ;
-	h += "<button class='btn-info' onclick='$(\"#results input.useit[type=checkbox]\").attr(\"checked\",true); return false'>Select all</button> " ;
-	h += "<button class='btn-info' onclick='$(\"#results input.useit[type=checkbox]\").removeAttr(\"checked\"); return false'>Deselect all</button> " ;
-	h += "<button class='btn-info' onclick='prefixSelectedFileNames(); return false'>Prefix selected names</button>" ;
+	h += "<button class='btn btn-info' onclick='$(\"#results input.useit[type=checkbox]\").attr(\"checked\",true); return false' tt='select_all'></button> " ;
+	h += "<button class='btn btn-info' onclick='$(\"#results input.useit[type=checkbox]\").removeAttr(\"checked\"); return false' tt='deselect_all'></button> " ;
+	h += "<button class='btn btn-info' onclick='prefixSelectedFileNames(); return false' tt='prefix_selected'></button>" ;
 	h += " <span id='tag_filter_message'></span></div>" ;
-	h += "<div style='margin-top:2px'>Auto-detect categories: " ;
-	h += "<button class='btn-info' onclick='$(\"input.auto_cats\").attr(\"checked\",true);return false'>Yes</button> " ;
-	h += "<button class='btn-info' onclick='$(\"input.auto_cats\").removeAttr(\"checked\");return false'>No</button> " ;
-	h += "(default is 'yes', can also be changed individually)</div>" ;
+	h += "<div style='margin-top:2px'><span tt='autodetect_cats'></span> " ;
+	h += "<button class='btn btn-info' onclick='$(\"input.auto_cats\").attr(\"checked\",true);return false' tt='yes'></button> " ;
+	h += "<button class='btn btn-info' onclick='$(\"input.auto_cats\").removeAttr(\"checked\");return false' tt='no'></button> " ;
+	h += "<span tt='default_is_yes'></span></div>" ;
 	h += "</form></div>" ;
 	$('#transfer_params').after ( h ) ;
 	$('#tag_filter_container form').submit ( function () { tag_filter() ; return false } ) ;
+	tt.updateInterface ( $($('#transfer_params').parent()) ) ;
 
 	var tk = [] ;
 	$.each ( tag2photo , function ( tag , ph ) { tk.push ( tag ) ; } ) ;
@@ -398,7 +403,8 @@ function tag_filter () {
 		} ) ;
 	}
 	
-	$('#tag_filter_message').html ( changed + " photos " + ( tag_mark == 1 ? 'checked' : 'unchecked' ) ) ;
+	var msg = tt.t('tag_filter_message').replace('$1',changed).replace('$2',( tag_mark == 1 ? tt.t('checked') : tt.t('unchecked') )) ;
+	$('#tag_filter_message').html ( msg ) ;
 }
 
 function checkCommonsURLs ( base_url , url2key ) {
@@ -413,7 +419,7 @@ function checkCommonsURLs ( base_url , url2key ) {
 				var id = '#photo_row_' + url2key[url] ;
 				var o = $(id) ;
 				o.find('.useit').remove() ;
-				var h = $("<div style='color:red'>Already exists on Commons as <a target='_blank' href=''></a></div>") ;
+				var h = $("<div style='color:red'>"+tt.t('already_exists')+" <a target='_blank' href=''></a></div>") ;
 				var a = $(h.find('a')) ;
 				a.attr('href','//commons.wikimedia.org/wiki/'+encodeURIComponent(v.title)) ;
 				a.html(v.title.replace(/^[^:]:/,'')) ;
@@ -424,10 +430,12 @@ function checkCommonsURLs ( base_url , url2key ) {
 			exturlusage_count-- ;
 			$('#commons_lookup span.count').html ( "(" + exturlusage_count + " left)" ) ;
 			if ( exturlusage_count == 0 ) {
-				var h = "<label style='display:inline'><input id='show_only_not_on_commons' type='checkbox' style='display:inline'/> Show only files not linked from Commons (" ;
-				h += ( $('.prow').length - $('.oncommons').length ) + " out of " + $('.prow').length ;
-				h += ")</label><hr/>" ;
+				var h = "<label style='display:inline'><input id='show_only_not_on_commons' type='checkbox' style='display:inline'/><span tt='show_only_not_on_commons' " ;
+				h += " tt1='" + ( $('.prow').length - $('.oncommons').length ) + "'" ;
+				h += " tt2='" + $('.prow').length + "'" ;
+				h += "></span></label><hr/>" ;
 				$('#commons_lookup').html ( h ) ;
+				tt.updateInterface ( $('#commons_lookup') ) ;
 				$('#show_only_not_on_commons').change ( function () {
 					$('.oncommons').toggle() ;
 				} ) ;
@@ -515,7 +523,7 @@ function uploadToCommons ( key , title , desc ) {
 //	if ( desc_add != '' ) desc = desc.replace ( /\|\s*Source=/ , "<br/>" + desc_add + "\n| Source=" ) ;
 	if ( info_add != '' ) desc = desc + "\n" + info_add ;
 	
-	if ( verbose ) console.log ( "Uploading... " + title ) ;
+	if ( verbose ) console.log ( tt.t('uploading') + ' ' + title ) ;
 
 	var params = {
 		action:'upload',
@@ -544,7 +552,7 @@ function uploadToCommons ( key , title , desc ) {
 				}
 			} ) ;
 			if ( typeof (((d.res||{}).error||{}).info) != 'undefined' ) s.push ( d.res.error.info ) ;
-			tr += "<br/><b>Transfer failed [1] : " + s.join('/') + "</b>" ;
+			tr += "<br/><b>"+tt.t('transfer_failed')+" [1] : " + s.join('/') + "</b>" ;
 //			console.log ( d ) ;
 		}
 		if ( verbose ) console.log("complete : " + title ); 
@@ -559,7 +567,7 @@ function uploadToCommons ( key , title , desc ) {
 	.error(function(x) {
 		$('#photo_row_'+key).removeClass('upload_running').addClass('upload_failed') ;
 		var tr = "<tt>" + title + "</tt>" ;
-		tr += "<br/><b>Transfer failed [2] : " + x.status + " " + x.statusText + "</b>" ;
+		tr += "<br/><b>"+tt.t('transfer_failed')+" [2] : " + x.status + " " + x.statusText + "</b>" ;
 		$('#photo_row_'+key+' div.transfer_result').show().html(tr);
 		concurrent_uploads-- ;
 		done_transfer++ ;
@@ -607,8 +615,9 @@ function transferFile ( key , title ) {
 	$.get ( 'flinfo_proxy.php' , params , function ( d ) {
 		
 		if ( undefined === d.wiki || d.wiki.status != 0 ) {
-			var err = "Flinfo issue " + d.wiki.status ;
-//			console.log ( err ) ;
+			var err = "<a href='http://wikipedia.ramselehof.de/flinfo.php' target='_blank'>" + tt.t('flinfo_issue') + "</a> " + d.wiki.status ;
+			err += "<br/>" + (d.wiki.licenses||[]).join('; ') ;
+//			console.log ( d ) ;
 			$('#photo_row_'+key+' div.transfer_result').show().html(err);
 			$('#photo_row_'+key).removeClass('upload_running').addClass('upload_failed') ;
 			concurrent_uploads-- ;
@@ -677,40 +686,64 @@ function showExample ( mode , data ) {
 }
 
 $(document).ready ( function () {
-/*	if ( window.location.protocol == 'https:' ) { // Force-redirect to http, to use flinfo
-		window.location = window.location.href.replace(/^https:/,'http:') ;
-	}*/
-	loadMenuBarAndContent ( { toolname : 'Flickr2commons' , meta : 'Flickr2commons' , content : 'form.html' , run : function () {
-			wikiDataCache.ensureSiteInfo ( [ { lang:'commons' , project:'wikimedia' } ] , function () {
-	
-			$('#toolname').html ( "Flickr-to-Commons" ) ;
-//			tusc.initializeTUSC () ;
-//			tusc.addTUSC2toolbar() ;
 
-			$('#user_id').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
-			$('#photoset_id').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
-			$('#photo_id').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
-			$('#flickr_tags').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
-			$('#max_pics').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
-			$('.initial_hidden').hide() ;
-			$('.initial_hidden input').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
+	tt = new ToolTranslation ( { tool:'flickr2commons' , fallback:'en' , highlight_missing:true , callback : function () {
+		loadMenuBarAndContent ( { toolname : 'Flickr2commons' , meta : 'Flickr2commons' , content : 'form.html' , run : function () {
+				tt.updateInterface() ;
+
+				$.get ( 'https://tools.wmflabs.org/magnustools/oauth_uploader.php' ,  {
+					action:'checkauth',
+					botmode:1
+				} , function ( d ) {
+					if ( d.error != 'OK' ) return ;
+					if ( typeof d.data == 'undefined' ) return ;
+					if ( typeof d.data.query == 'undefined' ) return ;
+					if ( typeof d.data.query.userinfo == 'undefined' ) return ;
+					if ( typeof d.data.query.userinfo.id == 'undefined' ) return ;
+					$('#auth_warning').replaceWith("Welcome, "+d.data.query.userinfo.name+"!") ;
+				} , 'json' ) ;
+				
+				$('#bd-main-nav ul.navbar-nav').prepend ( "<li class='nav-item' id='ifl'></li>" ) ;
+				tt.addILdropdown ( $('#ifl') ) ;
+				
+				wikiDataCache.ensureSiteInfo ( [ { lang:'commons' , project:'wikimedia' } ] , function () {
+	
+//				$('#toolname').html ( "Flickr-to-Commons" ) ;
+	//			tusc.initializeTUSC () ;
+	//			tusc.addTUSC2toolbar() ;
+
+				$('#user_id').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
+				$('#photoset_id').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
+				$('#photo_id').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
+				$('#flickr_tags').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
+				$('#max_pics').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
+				$('.initial_hidden').hide() ;
+				$('.initial_hidden input').tooltip ( { placement : 'right' , trigger: 'hover' } ) ;
 			
-			$('#user_id').focus() ;
+				$('#user_id').focus() ;
 			
-			var params = getUrlVars() ;
-			if ( undefined !== params.userid ) $('#user_id').val ( params.userid ) ;
-			if ( undefined !== params.maxpics ) $('#max_pics').val ( params.maxpics ) ;
-			if ( undefined !== params.tags ) $('#flickr_tags').val ( params.tags ) ;
-			testing = ( undefined !== params.testing ) ;
+				var tmp = window.location.hash ;
+				history.pushState("", document.title, window.location.pathname + window.location.search);
+//				window.location.hash = window.location.hash.replace(/#.*$/,'') ;
+				var params = getUrlVars() ;
+				window.location.hash = tmp ;
+				if ( undefined !== params.userid ) $('#user_id').val ( params.userid ) ;
+				if ( undefined !== params.maxpics ) $('#max_pics').val ( params.maxpics ) ;
+				if ( undefined !== params.tags ) $('#flickr_tags').val ( params.tags ) ;
+				testing = ( undefined !== params.testing ) ;
 			
-			if ( testing ) return ;
+				if ( testing ) return ;
 			
-			if ( undefined !== params.userid ) { showExample(1,params.userid) ; }
-			else if ( undefined !== params.photoset ) { showExample(2,params.photoset) ; }
-			else if ( undefined !== params.photoid ) { showExample(3,params.photoid) ; }
+				if ( undefined !== params.userid ) { showExample(1,params.userid) ; }
+				else if ( undefined !== params.photoset ) { showExample(2,params.photoset) ; }
+				else if ( undefined !== params.photoid ) { showExample(3,params.photoid) ; }
 			
-		} ) ;
-	} } )
+			} ) ;
+		} } )
+	} , onUpdateInterface : function () {
+		window.location.hash = 'interface_language=' + tt.language ;
+		$('#toolname').html ( tt.t('toolname') ) ;
+	} } ) ;
 } ) ;
 
 //		tusc.setupLoginBar ( $('#tusc_container_wrapper') , function () { } ) ;
