@@ -24,6 +24,7 @@ Vue.component ( 'flickr-file' , {
 			t = t.replace ( /\s+/g , ' ' ) ;
 			t = $.trim ( t ) ;
 			t = t.replace ( /\.(JPG|JPEG|PNG|TIF|TIFF)$/i , '' ) ;
+			if ( t.length > 230 ) t = t.substr ( 0 , 230 ) ;
 			t += " (" + me.file.id + ")" ;
 			t += '.' + me.file.originalformat.toLowerCase() ;
 			return t ;
@@ -89,7 +90,7 @@ Vue.component ( 'flickr-file' , {
 
 var MainPage = Vue.extend ( {
 	props : [ '_user' , '_photoset' , '_group' , '_photo' , '_tag' , '_max_pictures' ] ,
-	data : function () { return { is_authorized:false , checking_auth:false , last_error:'' , last_message:'' , running:false , files:[] , has_run:false , tags:{} , which_files:'all' , selected_tag:'' ,
+	data : function () { return { is_authorized:false , checking_auth:false , last_error:'' , last_message:'' , running:false , files:[] , has_run:false , tags:{} , which_files:'all' , selected_tag:'' , prefix_string:'' ,
 		user:'' , photoset:'' , group:'' , photo:'' , tag:'' , max_pictures:''
 	} } ,
 	created : function () {
@@ -129,7 +130,6 @@ var MainPage = Vue.extend ( {
 		doSelectAll : function () {
 			var me = this ;
 			var file_ids = me.getFileIDsByTagSelection() ;
-			console.log ( file_ids ) ;
 			$.each ( file_ids , function ( dummy , num ) {
 				var id = me.files[num].id ;
 				$('#file_cb_'+id).prop('checked', true);
@@ -138,10 +138,19 @@ var MainPage = Vue.extend ( {
 		doDeselectAll : function () {
 			var me = this ;
 			var file_ids = me.getFileIDsByTagSelection() ;
-			console.log ( file_ids ) ;
 			$.each ( file_ids , function ( dummy , num ) {
 				var id = me.files[num].id ;
 				$('#file_cb_'+id).prop('checked', false);
+			} ) ;
+		} ,
+		doPrefix : function () {
+			var me = this ;
+			var file_ids = me.getFileIDsByTagSelection() ;
+			$.each ( file_ids , function ( dummy , num ) {
+				var id = me.files[num].id ;
+				var name = $('#filename_'+id).val() ;
+				name = me.prefix_string + name ;
+				$('#filename_'+id).val(name) ;
 			} ) ;
 		} ,
 		logError : function ( msg ) {

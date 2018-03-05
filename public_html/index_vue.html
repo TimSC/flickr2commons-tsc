@@ -85,7 +85,7 @@ div.flickr_box {
 			<div v-if='checked_commons && !exists_on_commons' style='margin-bottom:2px;'>
 				<div style='display:table-row;'>
 					<div style='display:table-cell;width:100%;vertical-align:top'>
-						<input type='text' class='form-control' v-model='new_title' @keyup='checkFilenameOnCommons' />
+						<input :id="'filename_'+file.id" type='text' class='form-control' v-model='new_title' @keyup='checkFilenameOnCommons' />
 					</div>
 					<div style='display:table-cell;white-space:nowrap;vertical-align:top;min-width:40px;text-align:right;'>
 						<span v-if='checking_filename'><img src='https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Symbol_dot_dot_dot_violet.svg/32px-Symbol_dot_dot_dot_violet.svg.png' /></span>
@@ -170,6 +170,7 @@ div.flickr_box {
 		<div v-if='last_error!=""' class="bg-danger text-white" style='text-align:center'>{{last_error}}</div>
 
 		<div v-if='!running && has_run'>
+			<hr/>
 			<div>
 				<label><input type='radio' name='which_files' v-model='which_files' value='all' checked /> <span tt='all'></span></label>
 				<span tt='files'></span>
@@ -183,7 +184,10 @@ div.flickr_box {
 				</span>
 				<button class='btn btn-outline-primary' tt='select_all' @click.prevent='doSelectAll'></button>
 				<button class='btn btn-outline-primary' tt='deselect_all' @click.prevent='doDeselectAll'></button>
+				<button class='btn btn-outline-primary' tt='prefix_selected' @click.prevent='doPrefix'></button>
+				<input type='text' tt_placeholder='prefix_string' v-model='prefix_string' class="form-control" style="width:350px;display:inline" />
 			</div>
+			<hr/>
 			<div style='display:table;width:100%;'>
 				<flickr-file v-for='f in files' :key='f.id' :file='f'></flickr-file>
 			</div>
