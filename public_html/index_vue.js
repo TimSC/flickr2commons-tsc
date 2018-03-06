@@ -25,6 +25,7 @@ Vue.component ( 'flickr-file' , {
 			t = $.trim ( t ) ;
 			t = t.replace ( /\.(JPG|JPEG|PNG|TIF|TIFF)$/i , '' ) ;
 			if ( t.length > 230 ) t = t.substr ( 0 , 230 ) ;
+			if ( $.trim(t) == '' ) t = "Unnamed Flickr file" ;
 			t += " (" + me.file.id + ")" ;
 			t += '.' + me.file.originalformat.toLowerCase() ;
 			return t ;
@@ -89,14 +90,16 @@ Vue.component ( 'flickr-file' , {
 
 
 var MainPage = Vue.extend ( {
-	props : [ '_user' , '_photoset' , '_group' , '_photo' , '_tag' , '_max_pictures' ] ,
-	data : function () { return { is_authorized:false , checking_auth:false , last_error:'' , last_message:'' , running:false , files:[] , has_run:false , tags:{} , which_files:'all' , selected_tag:'' , prefix_string:'' ,
+	props : [ '_user' , '_photoset' , '_group' , '_photo' , '_url' ] ,
+	data : function () { return { is_authorized:false , checking_auth:false , last_error:'' , url:'' , last_message:'' , running:false , files:[] , has_run:false , tags:{} , which_files:'all' , selected_tag:'' , prefix_string:'' ,
 		user:'' , photoset:'' , group:'' , photo:'' , tag:'' , max_pictures:''
 	} } ,
 	created : function () {
 		var me = this ;
 		var do_run = false ;
-		$.each ( [ 'user' , 'photoset' , 'group' , 'photo' , 'tag' , 'max_pictures' ] , function ( k , v ) {
+		if ( typeof me.$route.query.max_pictures != 'undefined' ) me.max_pictures = parseInt ( me.$route.query.max_pictures ) ;
+		if ( typeof me.$route.query.tag != 'undefined' ) me.tag = me.$route.query.tag ;
+		$.each ( [ 'user' , 'photoset' , 'group' , 'photo' , 'url' ] , function ( k , v ) {
 			if ( typeof me['_'+v] == 'undefined' ) return ;
 			me[v] = me['_'+v] ;
 			do_run = true ;
@@ -172,7 +175,7 @@ var MainPage = Vue.extend ( {
 			var me = this ;
 			flickr2commons.getFlickrFiles ( params , 1 , (me.max_pictures*1) , me.tag , function ( d ) {
 				if ( d.status == 'RUNNING' ) {
-					me.last_message = d.so_far + ' files found so far' ;
+					me.last_message = d.so_far + ' files found so far (' + parseInt(d.page*100/d.pages) + '% done)' ;
 					return ;
 				}
 				if ( d.status == 'ERROR' ) {
@@ -183,18 +186,6 @@ var MainPage = Vue.extend ( {
 					me.files.push ( me.completeFileProperties(v) ) ;
 				} ) ;
 				me.finishFileLoad () ;
-			} ) ;
-		} ,
-		doRunUser : function ( user ) {
-			var me = this ;
-			flickr2commons.resolveUsername ( user , function ( user_id ) {
-				if ( user_id == '' ) return me.logError ( "No such user: "+user ) ;
-				var params = {
-					method : 'flickr.photos.search' ,
-					result_key : 'photos' ,
-					user_id : user_id
-				} ;
-				me.getFlickrFiles ( params ) ;
 			} ) ;
 		} ,
 		rewritePhotoProperties : function ( p ) {
@@ -220,7 +211,7 @@ var MainPage = Vue.extend ( {
 		} ,
 		finishFileLoad : function () {
 			var me = this ;
-
+//return; // TESTING FIXME
 			// Get tags 2 files
 			me.selected_tag = '' ;
 			var tags = {} ;
@@ -247,6 +238,7 @@ var MainPage = Vue.extend ( {
 				if ( --running > 0 ) return ;
 				me.finishFileLoad() ;
 			}
+			router.push ( '/photo/'+photos.join(',')+me.getRouteParams() ) ;
 			$.each ( photos , function ( dummy , photo_id ) {
 				running++ ;
 				var photo ;
@@ -269,14 +261,71 @@ var MainPage = Vue.extend ( {
 				} ) ;
 			} ) ;
 		} ,
+		doRunUser : function ( user ) {
+			var me = this ;
+			flickr2commons.resolveUsername ( user , function ( user_id ) {
+				if ( user_id == '' ) return me.logError ( "No such user: "+user ) ;
+				router.push ( '/user/'+user_id+me.getRouteParams() ) ;
+				var params = {
+					method : 'flickr.photos.search' ,
+					result_key : 'photos' ,
+					user_id : user_id
+				} ;
+				me.getFlickrFiles ( params ) ;
+			} ) ;
+		} ,
+		doRunPhotoset : function ( photoset_id ) {
+			var me = this ;
+			router.push ( '/photoset/'+photoset_id+me.getRouteParams() ) ;
+			var params = {
+				method : 'flickr.photosets.getPhotos' ,
+				result_key : 'photoset' ,
+				privacy_filter : 1 ,
+				photoset_id : photoset_id
+			} ;
+			me.getFlickrFiles ( params ) ;
+		} ,
+		doRunGroup : function ( group_id ) {
+			var me = this ;
+			flickr2commons.resolveGroupName ( group_id , function ( real_group_id ) {
+				if ( group_id == '' ) return me.logError ( "No such group: "+group_id ) ;
+				router.push ( '/group/'+real_group_id+me.getRouteParams() ) ;
+				var params = {
+					method : 'flickr.groups.pools.getPhotos' ,
+					result_key : 'photos' ,
+					group_id : real_group_id
+				} ;
+				me.getFlickrFiles ( params ) ;
+			} ) ;
+		} ,
+		getRouteParams : function () {
+			var me = this ;
+			var params = [] ;
+			if ( me.tag != '' ) params.push ( 'tag='+encodeURIComponent(me.tag) ) ;
+			if ( me.max_pictures != '' ) params.push ( 'max_pictures='+encodeURIComponent(me.max_pictures) ) ;
+			if ( params.length == 0 ) return '' ;
+			return '?' + params.join('&') ;
+		} ,
+		parseURL : function () {
+			var me = this ;
+			var m ;
+			if ( (m=me.url.match(/\/photos\/[^\/]+\/(\d+)/)) != null ) me.photo = m[1] ;
+			else if ( (m=me.url.match(/\/albums\/(\d+)/)) != null ) me.photoset = m[1] ;
+			else if ( (m=me.url.match(/\/groups\/([^\/]+)/)) != null ) me.group = m[1] ;
+			else if ( (m=me.url.match(/\/people\/([^\/]+)/)) != null ) me.user = m[1] ;
+			else return ;
+			me.url = '' ;
+		} ,
 		doRun : function () {
 			var me = this ;
 			me.last_message = '' ;
+			me.last_error = '' ;
 			if ( me.checking_auth ) {
 				setTimeout ( function () {me.doRun()} , 200 ) ;
 				return ;
 			}
 			if ( !me.is_authorized ) return me.logError ( "Not authorized" ) ;
+			if ( me.url != '' ) me.parseURL() ;
 			me.last_message = 'Running...' ;
 			me.running = true ;
 			me.files = [] ;
@@ -298,6 +347,7 @@ const routes = [
   { path: '/photoset/:_photoset', component: MainPage , props:true },
   { path: '/group/:_group', component: MainPage , props:true },
   { path: '/photo/:_photo', component: MainPage , props:true },
+  { path: '/url/:_url', component: MainPage , props:true },
 ] ;
 
 var router ;

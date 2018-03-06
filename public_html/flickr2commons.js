@@ -38,8 +38,23 @@ var flickr2commons = {
 			if ( d.stat == 'ok' && typeof d.user != 'undefined' && typeof d.user.nsid != 'undefined' ) {
 				callback ( d.user.nsid ) ;
 			} else { // Can't find NSID, probably the NSID already
-				console.log ( d ) ;
 				callback ( user ) ;
+			}
+		} ) ;
+	} ,
+	resolveGroupName : function ( group , callback ) {
+		var me = this ;
+		var params = {
+			method : 'flickr.groups.getInfo' ,
+			group_path_alias : group ,
+			api_key : me.flickr_api_key ,
+			format : 'json'
+		} ;
+		$.getJSON ( me.flickr_api_url+'/?jsoncallback=?' , params , function ( d ) {
+			if ( d.stat == 'ok' && typeof d.group != 'undefined' && typeof d.group.nsid != 'undefined' ) {
+				callback ( d.group.nsid ) ;
+			} else { // Can't find NSID, probably the NSID already
+				callback ( group ) ;
 			}
 		} ) ;
 	} ,
@@ -81,6 +96,7 @@ var flickr2commons = {
 			callback ( {
 				status:'RUNNING',
 				page:page,
+				pages:d[params.result_key].pages,
 				so_far:results.length
 			} ) ;
 			if ( d[params.result_key].pages > d[params.result_key].page && results.length < max_pics ) { // Get 'em all
