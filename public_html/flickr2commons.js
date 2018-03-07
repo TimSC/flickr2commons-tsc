@@ -330,6 +330,7 @@ var flickr2commons = {
 			}
 
 			var final_desc = ( d.wiki.info.desc || '' ) ;
+			if ( typeof o.new_desc != 'undefined' && o.new_desc != '' ) final_desc = o.new_desc ;
 			
 			var w = "== {{int:filedesc}} ==\n" ;
 			w += "{{Information\n" ;

@@ -27,6 +27,21 @@ div.flickr_box {
 	width:100%;
 	vertical-align:top;
 }
+div.flickr-file {
+	margin-bottom:1px;
+	padding:2px;
+}
+div.f2c_status_ready {
+}
+div.f2c_status_transfer {
+	background-color:#36c;
+}
+div.f2c_status_done {
+	background-color:#00af89;
+}
+div.f2c_status_error {
+	background-color:#d33;
+}
 </style>
 
 </head>
@@ -68,9 +83,9 @@ div.flickr_box {
 <!-- VUE TEMPLATES -->
 
 <template id='flickr-file-template'>
-	<div class='table-row flickr-file' :flickr_file_id='file.id'>
+	<div :class='"table-row flickr-file f2c_status_"+file.f2c_status.toLowerCase()' :flickr_file_id='file.id'>
 		<div style='display:table-cell;padding:2px;min-width:20px;'>
-			<input v-if='!exists_on_commons && !filename_exists' type='checkbox' v-model='is_checked' :id="'file_cb_'+file.id" class='form-control file_cb' @change='onCheckboxChange' />
+			<input v-if='!exists_on_commons && !filename_exists && file.f2c_status=="READY"' type='checkbox' v-model='is_checked' :id="'file_cb_'+file.id" class='form-control file_cb' @change='onCheckboxChange' />
 		</div>
 		<div class="flickr_thumb">
 			<a target='_blank' :href='file.page'>
@@ -78,6 +93,7 @@ div.flickr_box {
 			</a>
 		</div>
 		<div class="flickr_box">
+			<div>{{file.f2c_status}}</div>
 			<div v-if='exists_on_commons'>
 				<span tt='already_exists'></span> <a target="_blank" :href="'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(file.existing_filename_on_commons)">{{file.existing_filename_on_commons}}</a>
 			</div>
@@ -97,7 +113,7 @@ div.flickr_box {
 					</div>
 				</div>
 				<div>
-					<textarea class='form-control' tt_placeholder='description' tt_title='description_tt' rows=3 style='width:100%;margin-top:5px;' v-model='new_description'></textarea>
+					<textarea class='form-control file_description' tt_placeholder='description' tt_title='description_tt' rows=3 style='width:100%;margin-top:5px;' v-model='new_description'></textarea>
 				</div>
 			</div>
 		</div>
@@ -199,6 +215,10 @@ div.flickr_box {
 				<button class='btn btn-outline-primary' tt='prefix_selected' @click.prevent='doPrefix'></button>
 			</div>
 			<div class='alert-secondary' style='margin-top:2px;padding:2px;' tt='files_currently_selected' :tt1='currently_selected' :tt2='filename_exists_on_commons'></div>
+			<div v-if='currently_selected>0' style='margin-top:2px'>
+				<button v-if='transfers_running==0' class='btn btn-outline-success' tt='transfer2commons' @click='transferAll'></button>
+				<button v-if='transfers_running>0' :class='"btn btn-outline-danger"+(stop_transfers?" disabled":"")' tt='stop_transfers' @click='stopTransfers'></button>
+			</div>
 			<hr/>
 			<div style='display:table;width:100%;'>
 				<flickr-file v-for='f in files' :key='f.id' :file='f' v-on:checkboxchanged='updateCurrentlySelected'></flickr-file>
