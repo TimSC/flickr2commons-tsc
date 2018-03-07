@@ -3,12 +3,13 @@
 <META NAME="ROBOTS" CONTENT="NOINDEX, NOFOLLOW">
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title tt="toolname"></title>
-<link rel="stylesheet" href="https://tools-static.wmflabs.org/cdnjs/ajax/libs/twitter-bootstrap/4.0.0-beta.2/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://tools-static.wmflabs.org/cdnjs/ajax/libs/twitter-bootstrap/4.0.0/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://tools-static.wmflabs.org/magnustools/resources/html/wikimedia.css">
-<script src="https://tools-static.wmflabs.org/cdnjs/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-<script src="https://tools-static.wmflabs.org/cdnjs/ajax/libs/twitter-bootstrap/4.0.0-beta.2/js/bootstrap.bundle.min.js"></script>
-<script src="https://tools-static.wmflabs.org/cdnjs/ajax/libs/vue/2.5.7/vue.min.js"></script>
+<script src="https://tools-static.wmflabs.org/cdnjs/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://tools-static.wmflabs.org/cdnjs/ajax/libs/twitter-bootstrap/4.0.0/js/bootstrap.bundle.min.js"></script>
+<script src="https://tools-static.wmflabs.org/cdnjs/ajax/libs/vue/2.5.13/vue.min.js"></script>
 <script src="https://tools-static.wmflabs.org/cdnjs/ajax/libs/vue-router/3.0.1/vue-router.min.js"></script>
+<script src="https://tools-static.wmflabs.org/cdnjs/ajax/libs/jquery.lazyload/1.9.1/jquery.lazyload.min.js"></script>
 <script src="https://tools-static.wmflabs.org/magnustools/resources/js/wikidata.js"></script>
 <script src="https://tools-static.wmflabs.org/tooltranslate/tt.js"></script>
 <script src="flickr2commons.js"></script>
@@ -72,24 +73,25 @@ div.flickr_box {
 		</div>
 		<div class="flickr_thumb">
 			<a target='_blank' :href='file.page'>
-				<img :src='file.url_q' border='0' />
+				<img :data-original='thumbnail_url' class='lazyload' border='0' width="150" height="150" />
 			</a>
 		</div>
 		<div class="flickr_box">
-			<div v-if='!checked_commons'>
-				<i>Checking Commons if this file exists...
+			<div v-if='exists_on_commons'>
+				<span tt='already_exists'></span> <a target="_blank" :href="'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(file.existing_filename_on_commons)">{{file.existing_filename_on_commons}}</a>
 			</div>
-			<div v-if='checked_commons && exists_on_commons'>
-				<span tt='already_exists'></span> <a target="_blank" :href="'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(existing_commons_filename)">{{existing_commons_filename}}</a>
-			</div>
-			<div v-if='checked_commons && !exists_on_commons' style='margin-bottom:2px;'>
+			<div v-if='!exists_on_commons' style='margin-bottom:2px;'>
 				<div style='display:table-row;'>
 					<div style='display:table-cell;width:100%;vertical-align:top'>
 						<input :id="'filename_'+file.id" type='text' class='form-control' v-model='new_title' @keyup='checkFilenameOnCommons' />
 					</div>
 					<div style='display:table-cell;white-space:nowrap;vertical-align:top;min-width:40px;text-align:right;'>
 						<span v-if='checking_filename'><img src='https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Symbol_dot_dot_dot_violet.svg/32px-Symbol_dot_dot_dot_violet.svg.png' /></span>
-						<span v-else-if='!checking_filename && filename_exists'><img src='https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Symbol_unrelated.svg/32px-Symbol_unrelated.svg.png' /></span>
+						<span v-else-if='!checking_filename && filename_exists'>
+							<a target='_blank' :href="'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(new_title)">
+								<img src='https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Symbol_unrelated.svg/32px-Symbol_unrelated.svg.png' border='0' />
+							</a>
+						</span>
 						<span v-else><img src='https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Art%C3%ADculo_bueno.svg/32px-Art%C3%ADculo_bueno.svg.png' /></span>
 					</div>
 				</div>

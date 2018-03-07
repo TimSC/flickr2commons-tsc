@@ -1,46 +1,76 @@
 // ENFORCE HTTPS
 if (location.protocol != 'https:') location.href = 'https:' + window.location.href.substring(window.location.protocol.length);
 
+var url_queue = {
+	queue : [] ,
+	max_concurrent : 5 ,
+	running : 0 ,
+	add2queue : function ( url , params , callback ) {
+		var me = this ;
+//		console.log ( "ADDING" , url , params ) ;
+		me.queue.push ( { url:url , params:params , callback:callback } ) ;
+		me.runNext() ;
+	} ,
+	runNext : function () {
+		var me = this ;
+//		console.log ( "Running:"+me.running+'; left:'+me.queue.length ) ;
+		if ( me.running >= me.max_concurrent ) return ;
+		if ( me.queue.length == 0 ) return ;
+		me.running++ ;
+		var entry = me.queue.shift() ;
+		$.getJSON ( entry.url , entry.params , function ( d ) {
+			me.running-- ;
+			entry.callback ( d ) ;
+			me.runNext() ;
+		} ) . fail ( function () {
+			me.running-- ;
+			entry.callback () ;
+			me.runNext() ;
+		} );
+		me.runNext() ;
+	}
+} ;
+
+var commons_filename_cache = {} ;
+
 Vue.component ( 'flickr-file' , {
 	props : [ 'file' ] ,
-	data : function () { return { new_title:'' , new_description:'' , is_checked:true , exists_on_commons:false , checked_commons:false , existing_commons_filename:'' , checking_filename:false , filename_exists:false , filename_cache:{} } } ,
+	data : function () { return { new_title:'' , new_description:'' , thumbnail_url:'' ,
+		is_checked:true , exists_on_commons:false , checking_filename:true , filename_exists:false } } ,
 	created : function () {
 		var me = this ;
-		me.new_title = me.sanitizeTitle ( me.file.title ) ;
-		me.new_description = me.file.description._content ;
-		me.doesFileExistsOnCommons ( function ( d ) {
+		me.new_title = flickr2commons.generateFilenameForCommons ( me.file ) ;
+		me.new_description = $.trim ( me.file.description._content ) ;
+		me.thumbnail_url = me.file.url_q ;
+		if ( typeof me.file.existing_filename_on_commons != 'undefined' ) {
+			me.exists_on_commons = true ;
+		} else {
 			me.checkFilenameOnCommons() ;
-			if ( d.length == 0 ) return ;
-			me.existing_commons_filename = d[0] ;
-		} ) ;
+		}
 	} ,
-	mounted : function () { tt.updateInterface(this.$el) } ,
-	updated : function () { tt.updateInterface(this.$el) } ,
+	mounted : function () {
+		var me = this ;
+		tt.updateInterface(me.$el) ;
+		$(me.$el).find("img.lazyload").lazyload();
+	} ,
+	updated : function () {
+		var me = this ;
+		tt.updateInterface(me.$el) ;
+	} ,
 	methods : {
-		sanitizeTitle : function ( t ) {
-			var me = this ;
-			t = t.replace ( /_/g , ' ' ) ;
-			t = t.replace ( /[\:\/\|]/g , ' ' ) ;
-			t = t.replace ( /\s+/g , ' ' ) ;
-			t = $.trim ( t ) ;
-			t = t.replace ( /\.(JPG|JPEG|PNG|TIF|TIFF)$/i , '' ) ;
-			if ( t.length > 230 ) t = t.substr ( 0 , 230 ) ;
-			if ( $.trim(t) == '' ) t = "Unnamed Flickr file" ;
-			t += " (" + me.file.id + ")" ;
-			t += '.' + me.file.originalformat.toLowerCase() ;
-			return t ;
-		} ,
 		checkFilenameOnCommons : function () {
 			var me = this ;
 			var fn = me.new_title ;
-			if ( typeof me.filename_cache[me.new_title] != 'undefined' ) {
-				me.filename_exists = me.filename_cache[me.new_title] ;
+			fn = fn.replace(/_/g,' ') ;
+			if ( typeof commons_filename_cache[me.new_title] != 'undefined' ) {
+				me.checking_filename = false ;
+				me.filename_exists = commons_filename_cache[me.new_title] ;
 				return ;
 			}
 			me.checking_filename = true ;
 			$.getJSON ( 'https://commons.wikimedia.org/w/api.php?callback=?' , {
 				action:'query',
-				titles:'File:'+me.new_title,
+				titles:'File:'+fn,
 				prop:'imageinfo',
 				format:'json'
 			} , function ( d ) {
@@ -51,13 +81,14 @@ Vue.component ( 'flickr-file' , {
 						if ( k != -1 ) me.filename_exists = true ;
 					} ) ;
 				}
-				me.filename_cache[me.new_title] = me.filename_exists ;
+				commons_filename_cache[fn] = me.filename_exists ;
 				me.checking_filename = false ;
 			} ) ;
 		} ,
+/*
 		doesFileExistsOnCommons : function ( callback ) {
 			var me = this ;
-			$.getJSON ( 'https://commons.wikimedia.org/w/api.php?callback=?' , {
+			url_queue.add2queue ( 'https://commons.wikimedia.org/w/api.php?callback=?' , {
 				action:'query',
 				prop:'extlinks',
 				ellimit:'500',
@@ -65,7 +96,7 @@ Vue.component ( 'flickr-file' , {
 				gsrnamespace:6,
 				gsrlimit:500,
 				format:'json',
-				gsrsearch:'flickr photos ' + me.file.id
+				gsrsearch:'flickr ' + me.file.id
 			} , function ( d ) {
 				var params = [] ;
 				var patt = new RegExp("flickr\.com\/photos\/.*\/"+me.file.id+"\/{0,1}$");
@@ -83,6 +114,7 @@ Vue.component ( 'flickr-file' , {
 				callback ( params ) ;
 			} ) ;
 		}
+*/
 	} ,
 	template : '#flickr-file-template'
 } ) ;
@@ -92,7 +124,7 @@ Vue.component ( 'flickr-file' , {
 var MainPage = Vue.extend ( {
 	props : [ '_user' , '_photoset' , '_group' , '_photo' , '_url' ] ,
 	data : function () { return { is_authorized:false , checking_auth:false , last_error:'' , url:'' , last_message:'' , running:false , files:[] , has_run:false , tags:{} , which_files:'all' , selected_tag:'' , prefix_string:'' ,
-		user:'' , photoset:'' , group:'' , photo:'' , tag:'' , max_pictures:''
+		user:'' , photoset:'' , group:'' , photo:'' , tag:'' , max_pictures:'' , owners:{}
 	} } ,
 	created : function () {
 		var me = this ;
@@ -209,9 +241,61 @@ var MainPage = Vue.extend ( {
 			f.page = 'https://www.flickr.com/photos/' + f.owner + '/' + f.id + '/' ;
 			return f ;
 		} ,
+		checkProposedCommonsFilenames : function ( callback ) {
+			var me = this ;
+			var filenames = [] ;
+			$.each ( me.files , function ( id , file ) {
+				var filename = flickr2commons.generateFilenameForCommons ( file ) ;
+				filenames.push ( filename ) ;
+			} ) ;
+
+			$.post ( 'api.php' , {
+				action : 'check_existing_commons_filenames' ,
+				filenames : JSON.stringify(filenames)
+			} , function ( d ) {
+				$.each ( me.files , function ( id , file ) {
+					var filename = flickr2commons.generateFilenameForCommons ( file ) ;
+					var filename_api = filename.replace(/ /g,'_') ; // Compatability with API results
+					if ( typeof d.data.files[filename_api] == 'undefined' ) {
+						console.log ( "FILENAME FILE: "+filename ) ;
+						return ;
+					}
+					commons_filename_cache[filename] = d.data.files[filename_api] ;
+				} ) ;
+				callback() ;
+			} , 'json' )
+			
+		} ,
+		checkFlickrFilesOnCommons : function () {
+			var me = this ;
+			var data = { files:{} , owners:me.owners } ;
+			$.each ( me.owners , function ( nsid , name ) {
+				data.files[nsid] = [] ;
+			} ) ;
+			$.each ( me.files , function ( id , file ) {
+				var nsid = file.owner ;
+				data.files[nsid].push ( file.id ) ;
+			} ) ;
+
+			me.last_message = "Checking which files are already on Commons" ;
+			$.post ( './api.php' , {
+				action:'check_flickr_files_in_commons',
+				data:JSON.stringify(data)
+			} , function ( d ) {
+				$.each ( me.files , function ( dummy , file ) {
+					if ( typeof d.data.files[file.id] == 'undefined' ) return ;
+					file.existing_filename_on_commons = d.data.files[file.id] ;
+				} ) ;
+				me.which_files = 'all' ;
+				me.last_message = '' ;
+				me.running = false ;
+				me.has_run = true ;
+			} , 'json' ) ;
+
+		} ,
 		finishFileLoad : function () {
 			var me = this ;
-//return; // TESTING FIXME
+
 			// Get tags 2 files
 			me.selected_tag = '' ;
 			var tags = {} ;
@@ -219,17 +303,33 @@ var MainPage = Vue.extend ( {
 				if ( typeof file.tags == 'undefined' ) return ;
 				$.each ( file.tags.split(/\s+/) , function ( k , tag ) {
 					tag = $.trim ( tag.toLowerCase() ) ;
-					if ( typeof me.tags[tag] == 'undefined' ) tags[tag] = [] ;
+					if ( typeof tags[tag] == 'undefined' ) tags[tag] = [] ;
 					tags[tag].push ( id ) ;
 					if ( me.selected_tag == '' ) me.selected_tag = tag ;
 				} ) ;
 			} ) ;
 			me.tags = tags ;
 
-			me.which_files = 'all' ;
-			me.last_message = '' ;
-			me.running = false ;
-			me.has_run = true ;
+			// Get owners
+			me.owners = {} ;
+			var running = 0 ;
+			function fin ( person ) {
+				running-- ;
+				if ( typeof person != 'undefined' && typeof person.username != 'undefined' ) me.owners[person.nsid] = person.username._content ;
+				if ( running > 0 ) return ;
+				me.checkFlickrFilesOnCommons() ;
+			}
+
+			running++ ;
+			me.checkProposedCommonsFilenames ( fin ) ;
+
+			$.each ( me.files , function ( id , file ) {
+				me.owners[file.owner] = file.owner ;
+			} ) ;
+			$.each ( me.owners , function ( nsid , dummy ) {
+				running++ ;
+				flickr2commons.getUserInfo ( nsid , fin ) ;
+			} ) ;
 		} ,
 		doRunPhotos : function ( photos ) {
 			var me = this ;
