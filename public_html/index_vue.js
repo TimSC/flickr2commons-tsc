@@ -54,10 +54,12 @@ Vue.component ( 'flickr-file' , {
 		var me = this ;
 		tt.updateInterface(me.$el) ;
 		$(me.$el).find("img.lazyload").lazyload();
+		me.onCheckboxChange() ;
 	} ,
 	updated : function () {
 		var me = this ;
 		tt.updateInterface(me.$el) ;
+		me.onCheckboxChange() ;
 	} ,
 	methods : {
 		checkFilenameOnCommons : function () {
@@ -85,8 +87,12 @@ Vue.component ( 'flickr-file' , {
 				}
 				commons_filename_cache[fn] = me.filename_exists ;
 				me.checking_filename = false ;
+				me.onCheckboxChange() ;
 			} ) ;
 		} ,
+		onCheckboxChange : function () {
+			this.$emit('checkboxchanged');
+		}
 /*
 		doesFileExistsOnCommons : function ( callback ) {
 			var me = this ;
@@ -126,7 +132,7 @@ Vue.component ( 'flickr-file' , {
 var MainPage = Vue.extend ( {
 	props : [ '_user' , '_photoset' , '_group' , '_photo' , '_url' ] ,
 	data : function () { return { is_authorized:false , checking_auth:false , last_error:'' , url:'' , last_message:'' , running:false , files:[] , has_run:false , tags:{} , which_files:'all' , selected_tag:'' , prefix_string:'' ,
-		user:'' , photoset:'' , group:'' , photo:'' , tag:'' , max_pictures:'' , owners:{}
+		user:'' , photoset:'' , group:'' , photo:'' , tag:'' , max_pictures:'' , owners:{} , currently_selected:0 , filename_exists_on_commons:0
 	} } ,
 	created : function () {
 		var me = this ;
@@ -144,6 +150,11 @@ var MainPage = Vue.extend ( {
 	mounted : function () { tt.updateInterface(this.$el) } ,
 	updated : function () { tt.updateInterface(this.$el) } ,
 	methods : {
+		updateCurrentlySelected : function () {
+			var me = this ;
+			me.currently_selected = $('input.file_cb:checked').length ;
+			me.filename_exists_on_commons = $('img.filename_exists_on_commons').length ;
+		} ,
 		getFileIDsByTagSelection : function () {
 			var me = this ;
 			var ret = [] ;
@@ -171,6 +182,7 @@ var MainPage = Vue.extend ( {
 				var id = me.files[num].id ;
 				$('#file_cb_'+id).prop('checked', true);
 			} ) ;
+			me.updateCurrentlySelected() ;
 		} ,
 		doDeselectAll : function () {
 			var me = this ;
@@ -179,6 +191,7 @@ var MainPage = Vue.extend ( {
 				var id = me.files[num].id ;
 				$('#file_cb_'+id).prop('checked', false);
 			} ) ;
+			me.updateCurrentlySelected() ;
 		} ,
 		doPrefix : function () {
 			var me = this ;
@@ -189,6 +202,7 @@ var MainPage = Vue.extend ( {
 				name = me.prefix_string + name ;
 				$('#filename_'+id).val(name) ;
 			} ) ;
+			me.updateCurrentlySelected() ;
 		} ,
 		logError : function ( msg ) {
 			var me = this ;
@@ -203,6 +217,7 @@ var MainPage = Vue.extend ( {
 				me.checking_auth = false ;
 				me.is_authorized = flickr2commons.is_authorized ;
 				tt.updateInterface(me.$el) ;
+				$('#url_input').focus() ;
 			} ) ;
 		} ,
 		getFlickrFiles : function ( params ) {
@@ -292,6 +307,7 @@ var MainPage = Vue.extend ( {
 				me.last_message = '' ;
 				me.running = false ;
 				me.has_run = true ;
+				me.updateCurrentlySelected() ;
 			} , 'json' ) ;
 
 		} ,
@@ -435,6 +451,7 @@ var MainPage = Vue.extend ( {
 			me.last_message = 'Running...' ;
 			me.running = true ;
 			me.files = [] ;
+			me.currently_selected = 0 ;
 			if ( me.user != '' ) me.doRunUser(me.user) ;
 			else if ( me.photoset != '' ) me.doRunPhotoset(me.photoset) ;
 			else if ( me.group != '' ) me.doRunGroup(me.group) ;
