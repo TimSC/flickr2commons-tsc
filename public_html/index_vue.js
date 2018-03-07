@@ -1,37 +1,39 @@
-// ENFORCE HTTPS
-if (location.protocol != 'https:') location.href = 'https:' + window.location.href.substring(window.location.protocol.length);
+// INITIALIZE
+if (location.protocol != 'https:') location.href = 'https:' + window.location.href.substring(window.location.protocol.length); // ENFORCE HTTPS
+else if ( /^[^#]+\?/.test(window.location.href) ) {  // AUTO-FORWARD BASED ON OLD VERSION PARAMETERS
 
-var url_queue = {
-	queue : [] ,
-	max_concurrent : 5 ,
-	running : 0 ,
-	add2queue : function ( url , params , callback ) {
-		var me = this ;
-//		console.log ( "ADDING" , url , params ) ;
-		me.queue.push ( { url:url , params:params , callback:callback } ) ;
-		me.runNext() ;
-	} ,
-	runNext : function () {
-		var me = this ;
-//		console.log ( "Running:"+me.running+'; left:'+me.queue.length ) ;
-		if ( me.running >= me.max_concurrent ) return ;
-		if ( me.queue.length == 0 ) return ;
-		me.running++ ;
-		var entry = me.queue.shift() ;
-		$.getJSON ( entry.url , entry.params , function ( d ) {
-			me.running-- ;
-			entry.callback ( d ) ;
-			me.runNext() ;
-		} ) . fail ( function () {
-			me.running-- ;
-			entry.callback () ;
-			me.runNext() ;
-		} );
-		me.runNext() ;
+	function getUrlVars () {
+		var vars = {} ;
+		var hashes = window.location.href.slice(window.location.href.indexOf('?') + 1).replace(/#.*$/,'').split('&');
+		$.each ( hashes , function ( i , j ) {
+			var hash = j.split('=');
+			hash[1] += '' ;
+			vars[hash[0]] = decodeURI(hash[1]).replace(/_/g,' ');
+		} ) ;
+		return vars;
 	}
-} ;
+	var params = getUrlVars() ;
 
-var commons_filename_cache = {} ;
+	var add = [] ;
+	if ( typeof params.tags != 'undefined' ) add.push ( 'tag='+encodeURIComponent(params.tags) ) ;
+	if ( typeof params.maxpics != 'undefined' ) add.push ( 'max_pictures='+encodeURIComponent(params.maxpics) ) ;
+
+	var url = '/' ;
+	if ( typeof params.userid != 'undefined' ) url = '/user/' + encodeURIComponent ( params.userid ) ;
+	else if ( typeof params.photoset != 'undefined' ) url = '/photoset/' + encodeURIComponent ( params.photoset ) ;
+	else if ( typeof params.photoid != 'undefined' ) url = '/photo/' + encodeURIComponent ( params.photoid ) ;
+	if ( add.length > 0 ) url += '?' + add.join('&') ;
+
+	location.href = window.location.href.replace(/\?.*$/,'')+'#'+url;
+}
+
+function ucFirst(string) {
+	if ( typeof string == 'undefined' ) return '' ;
+	return string.substring(0, 1).toUpperCase() + string.substring(1);
+}
+
+
+// VUE COMPONENTS
 
 Vue.component ( 'flickr-file' , {
 	props : [ 'file' ] ,
@@ -88,7 +90,7 @@ Vue.component ( 'flickr-file' , {
 /*
 		doesFileExistsOnCommons : function ( callback ) {
 			var me = this ;
-			url_queue.add2queue ( 'https://commons.wikimedia.org/w/api.php?callback=?' , {
+			$.getJSON ( 'https://commons.wikimedia.org/w/api.php?callback=?' , {
 				action:'query',
 				prop:'extlinks',
 				ellimit:'500',
@@ -255,7 +257,7 @@ var MainPage = Vue.extend ( {
 			} , function ( d ) {
 				$.each ( me.files , function ( id , file ) {
 					var filename = flickr2commons.generateFilenameForCommons ( file ) ;
-					var filename_api = filename.replace(/ /g,'_') ; // Compatability with API results
+					var filename_api = ucFirst(filename.replace(/ /g,'_')) ; // Compatability with API results
 					if ( typeof d.data.files[filename_api] == 'undefined' ) {
 						console.log ( "FILENAME FILE: "+filename ) ;
 						return ;
@@ -315,7 +317,11 @@ var MainPage = Vue.extend ( {
 			var running = 0 ;
 			function fin ( person ) {
 				running-- ;
-				if ( typeof person != 'undefined' && typeof person.username != 'undefined' ) me.owners[person.nsid] = person.username._content ;
+				if ( typeof person != 'undefined' ) {
+					me.owners[person.nsid] = [ person.nsid ] ;
+					if ( typeof person.username != 'undefined' && person.username != person.nsid ) me.owners[person.nsid].push ( person.username._content ) ;
+					if ( typeof person.path_alias != 'undefined' && person.path_alias != '' ) me.owners[person.nsid].push ( person.path_alias ) ;
+				}
 				if ( running > 0 ) return ;
 				me.checkFlickrFilesOnCommons() ;
 			}
@@ -440,6 +446,7 @@ var MainPage = Vue.extend ( {
 } ) ;
 
 
+// GLOBAL/MAIN
 
 const routes = [
   { path: '/', component: MainPage },
@@ -450,6 +457,7 @@ const routes = [
   { path: '/url/:_url', component: MainPage , props:true },
 ] ;
 
+var commons_filename_cache = {} ;
 var router ;
 var app ;
 var tt ;
@@ -480,56 +488,12 @@ $(document).ready ( function () {
 		}
 	} ) ;
 
-
-
 	// Load metadata
 	$.get ( '/fist/file_candidates/api.php' , {
 		meta:'all',
 		action:'get_flickr_key'
 	} , function ( d ) {
-//		metadata = d.meta ;
 		flickr2commons.flickr_api_key = d.data ;
 		fin() ;
 	} , 'json' ) ;
-
-/*
-
-	// Load media properties
-	var sparql = 'SELECT ?property ?propertyLabel WHERE { ?property wikibase:propertyType wikibase:CommonsMedia . SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". } }' ;
-	wd.loadSPARQL ( sparql , function ( json ) {
-		var group2hint = {
-			'diagram' : /\b(logo|seal|flag|structure|symbol|icon|diagram|plan|bathymetry)\b/ ,
-			'map' : /\bmap\b/ ,
-			'photo' : /\b(image|banner|view)\b/ ,
-			'video' : /\bvideo\b/ ,
-			'audio' : /\baudio\b/ ,
-		}
-		$.each ( json.results.bindings , function ( dummy , b ) {
-			var label = b.propertyLabel.value ;
-			var p = wd.itemFromBinding ( b.property ) ;
-			media_prop2label['P'+p] = label ;
-			if ( p == 18 || p == 368 || p == 369 ) return ; // Special cases
-			var to_group = 'other' ;
-			$.each ( group2hint , function ( group , hint ) {
-				if ( !hint.test(label) ) return ;
-				to_group = group ;
-				return false ;
-			} ) ;
-			media_props[to_group].push ( { p:'P'+p , label:label } ) ;
-		} )
-		$.each ( media_props , function ( group , props ) {
-			props.sort ( function ( a , b ) {
-				return (a.label.toLowerCase()>b.label.toLowerCase())?1:-1 ;
-			} ) ;
-		} ) ;
-		fin() ;
-	} ) ;
-	
-	$('#navbar_search_form').submit ( function ( ev ) {
-		ev.preventDefault();
-		var query = $('#navbar_search_form input[type="text"]').get(0).val() ;
-		console.log("1",query);
-		return false ;
-	} ) ;
-*/
 } ) ;

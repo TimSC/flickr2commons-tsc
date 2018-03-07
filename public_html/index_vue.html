@@ -65,11 +65,12 @@ div.flickr_box {
 </div>
 </body>
 
+<!-- VUE TEMPLATES -->
 
 <template id='flickr-file-template'>
-	<div class='table-row'>
+	<div class='table-row flickr-file' :flickr_file_id='file.id'>
 		<div style='display:table-cell;padding:2px;min-width:20px;'>
-			<input v-if='!exists_on_commons && !filename_exists' type='checkbox' v-model='is_checked' :id="'file_cb_'+file.id" />
+			<input v-if='!exists_on_commons && !filename_exists' type='checkbox' v-model='is_checked' :id="'file_cb_'+file.id" class='form-control' />
 		</div>
 		<div class="flickr_thumb">
 			<a target='_blank' :href='file.page'>
@@ -192,8 +193,10 @@ div.flickr_box {
 				</span>
 				<button class='btn btn-outline-primary' tt='select_all' @click.prevent='doSelectAll'></button>
 				<button class='btn btn-outline-primary' tt='deselect_all' @click.prevent='doDeselectAll'></button>
-				<button class='btn btn-outline-primary' tt='prefix_selected' @click.prevent='doPrefix'></button>
+			</div>
+			<div>
 				<input type='text' tt_placeholder='prefix_string' v-model='prefix_string' class="form-control" style="width:350px;display:inline" />
+				<button class='btn btn-outline-primary' tt='prefix_selected' @click.prevent='doPrefix'></button>
 			</div>
 			<hr/>
 			<div style='display:table;width:100%;'>

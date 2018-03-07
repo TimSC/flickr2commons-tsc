@@ -14,8 +14,8 @@ if ( $action == 'check_flickr_files_in_commons' ) {
 
 	$urls = [] ;
 	foreach ( $data->files AS $nsid => $file_ids ) {
-		$user_names = [$nsid] ;
-		if ( isset($data->owners->$nsid) and $data->owners->$nsid != $nsid ) $user_names[] = $data->owners->$nsid ;
+		if ( isset($data->owners->$nsid) and $data->owners->$nsid != $nsid ) $user_names = $data->owners->$nsid ;
+		else $user_names = [$nsid] ;
 		foreach ( $file_ids AS $file_id ) {
 			foreach ( ['http','https'] AS $protocol ) {
 				foreach ( ['','www.'] AS $p1 ) {
