@@ -352,10 +352,12 @@ var flickr2commons = {
 				w += "{{" + v + "}}\n" ;
 			} ) ;
 			
-			w += "\n" ;
-			$.each ( ( d.wiki.categories || [] ) , function ( k , v ) {
-				w += "[[" + v + "]]\n" ;
-			} ) ;
+			if ( typeof o.auto_categories == 'undefined' || o.auto_categories ) { // Not set => do auto catgegories, otherwise use value
+				w += "\n" ;
+				$.each ( ( d.wiki.categories || [] ) , function ( k , v ) {
+					w += "[[" + v + "]]\n" ;
+				} ) ;
+			}
 			
 			w = $.trim ( w ) ;
 

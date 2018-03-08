@@ -93,7 +93,7 @@ div.f2c_status_error {
 			</a>
 		</div>
 		<div class="flickr_box">
-			<div v-if='file.existing_filename_on_commons!=""'>
+			<div v-if='file.existing_filename_on_commons!=""' class='file_on_commons'>
 				<div>
 					<span tt='already_exists'></span> <a target="_blank" :href="'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(file.existing_filename_on_commons)">{{file.existing_filename_on_commons}}</a>
 				</div>
@@ -134,8 +134,16 @@ div.f2c_status_error {
 						</div>
 					</div>
 				</div>
-				<div>
-					<textarea class='form-control categories' tt_placeholder='categories' tt_title='categories_tt' rows=2 style='width:100%;margin-top:5px;' v-model='categories'></textarea>
+				<div class='row' style='vertical-align:top;'>
+					<div class='col-sm-6'>
+						<textarea class='form-control categories' tt_placeholder='categories' tt_title='categories_tt' rows=2 style='width:100%;margin-top:5px;' v-model='categories'></textarea>
+					</div>
+					<div class='col-sm-6'>
+						<label>
+							<input type='checkbox' class='auto_categories' :id='"file_autocats_"+file.id' />
+							<span tt='auto_cats'></span>
+						</label>
+					</div>
 				</div>
 				<div>
 					<span v-for='tag in file.tags.toLowerCase().split(/\s/).sort()' :tag='tag' class="badge badge-pill badge-secondary" style='margin-right:2px;'>{{tag}}</span>
@@ -246,8 +254,6 @@ div.f2c_status_error {
 						</div>
 					</div>
 					
-
-
 					<div class="form-group row">
 						<div class="col-sm-4" style='vertical-align:top;'>
 							<div>
@@ -269,24 +275,39 @@ div.f2c_status_error {
 						</div>
 						<div class="col-sm-8" style='vertical-align:top;'>
 							<div>
-								<button class='btn btn-outline-primary' tt='select_all' @click.prevent='doSelectAll'></button>
-								<button class='btn btn-outline-primary' tt='deselect_all' @click.prevent='doDeselectAll'></button>
+								<div class="btn-group" role="group">
+									<button class='btn btn-outline-primary' tt='select_all' @click.prevent='doSelectAll'></button>
+									<button class='btn btn-outline-primary' tt='deselect_all' @click.prevent='doDeselectAll'></button>
+								</div>
 							</div>
-							<div>
-								<input type='text' tt_placeholder='prefix_string' v-model='prefix_string' class="form-control" style="width:350px;display:inline" />
-								<button class='btn btn-outline-primary' tt='prefix_selected' @click.prevent='doPrefix'></button>
+							<div style='margin-top:2px;'>
+								<div class="input-group">
+									<input type='text' tt_placeholder='prefix_string' v-model='prefix_string' class="form-control" style="width:250px;display:inline" />
+									<button class='btn btn-outline-primary' tt='prefix_selected' @click.prevent='doPrefix'></button>
+								</div>
 							</div>
 						</div>
-					<div>
+					</div>
+
+					<div class="form-group row">
+						<label class="col-sm-4 col-form-label" tt="autodetect_cats"></label>
+						<div class="col-sm-8">
+							<div class="btn-group" role="group">
+								<button class='btn btn-outline-primary' tt='yes' @click.prevent='onAutoCats(true)'></button>
+								<button class='btn btn-outline-primary' tt='no' @click.prevent='onAutoCats(false)'></button>
+							</div>
+						</div>
+					</div>
+
 				</form>
 			</div>
 
 
 			<div class='alert-secondary' style='margin-top:2px;padding:2px;'>
 				<span tt='files_currently_selected' :tt1='currently_selected' :tt2='filename_exists_on_commons'></span>
-				<label>
-					<input type='checkbox' v-model='hide_files_on_commons' />
-					<span tt='hide_files_on_commons'></span>
+				<label v-if='on_commons>0'>
+					<input type='checkbox' v-model='hide_files_on_commons' @change='onHideCommonsChange' />
+					<span tt='hide_files_on_commons' :tt1='on_commons'></span>
 				</label>
 			</div>
 			<div style='margin-top:2px;min-height:40px;'>

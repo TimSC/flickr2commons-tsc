@@ -135,8 +135,8 @@ Vue.component ( 'flickr-file' , {
 var MainPage = Vue.extend ( {
 	props : [ '_user' , '_photoset' , '_group' , '_photo' , '_url' ] ,
 	data : function () { return { is_authorized:false , checking_auth:false , last_error:'' , url:'' , last_message:'' , running:false , files:[] , has_run:false , tags:{} ,
-		which_files:'all' , selected_tag:'' , prefix_string:'' , add2every_desc:'' , append_everywhere:'' , no_auto_desc:false , hide_files_on_commons:false ,
-		user:'' , photoset:'' , group:'' , photo:'' , tag:'' , max_pictures:'' , owners:{} , currently_selected:0 , filename_exists_on_commons:0 , transfers_running:0 , stop_transfers:false , form_is_visible:true
+		which_files:'all' , selected_tag:'' , prefix_string:'' , add2every_desc:'' , append_everywhere:'' , no_auto_desc:false , hide_files_on_commons:true ,
+		user:'' , photoset:'' , group:'' , photo:'' , tag:'' , max_pictures:'' , owners:{} , on_commons:0 , currently_selected:0 , filename_exists_on_commons:0 , transfers_running:0 , stop_transfers:false , form_is_visible:true
 	} } ,
 	created : function () {
 		var me = this ;
@@ -158,6 +158,7 @@ var MainPage = Vue.extend ( {
 			var me = this ;
 			me.currently_selected = $('input.file_cb:checked').length ;
 			me.filename_exists_on_commons = $('img.filename_exists_on_commons').length ;
+			me.on_commons = $('div.file_on_commons').length ;
 		} ,
 		getFileIDsByTagSelection : function () {
 			var me = this ;
@@ -178,6 +179,15 @@ var MainPage = Vue.extend ( {
 				return ret ;
 			}
 			console.log ( "BAD MODE: " + me.which_files ) ;
+		} ,
+		onAutoCats : function ( new_state ) {
+			var me = this ;
+			var file_ids = me.getFileIDsByTagSelection() ;
+			$.each ( file_ids , function ( dummy , num ) {
+				var id = me.files[num].id ;
+				$('#file_autocats_'+id).prop('checked', new_state);
+			} ) ;
+			me.updateCurrentlySelected() ;
 		} ,
 		doSelectAll : function () {
 			var me = this ;
@@ -475,6 +485,12 @@ var MainPage = Vue.extend ( {
 			else if ( me.photo != '' ) me.doRunPhotos(me.photo.split(',')) ;
 			else return me.logError ( tt.t('nothing2work_with') ) ;
 		} ,
+		onHideCommonsChange : function () {
+			setTimeout ( function () {
+				window.scroll(0,1) ;
+				window.scroll(0,-1) ;
+			} , 10 ) ;
+		} ,
 		stopTransfers : function () {
 			var me = this ;
 			me.stop_transfers = true ;
@@ -504,6 +520,7 @@ var MainPage = Vue.extend ( {
 				photo : {
 					id : flickr_file_ids[0]
 				} ,
+				auto_categories : false ,
 				best_size : {} ,
 				toolname:'flickr2commons',
 				error : ''
@@ -535,10 +552,11 @@ var MainPage = Vue.extend ( {
 			if ( $.trim(me.add2every_desc) != '' ) o.new_desc = $.trim ( o.new_desc + "\n" + $.trim(me.add2every_desc) ) ;
 
 			var categories = $.trim(file_node.find('textarea.categories').val()).split("\n") ;
+			if ( categories.join('') != '' ) o.auto_categories = false ;
+			else o.auto_categories = file_node.find('input.auto_categories').is(':checked') ;
 
 			file.f2c_status = 'TRANSFER' ;
 			flickr2commons.generateInformationTemplate ( o , function ( o ) {
-
 				// Check for error
 				if ( o.error!='' ) {
 					me.transfers_running-- ;
