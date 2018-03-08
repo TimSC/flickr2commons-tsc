@@ -138,7 +138,7 @@ div.f2c_status_error {
 					<textarea class='form-control categories' tt_placeholder='categories' tt_title='categories_tt' rows=2 style='width:100%;margin-top:5px;' v-model='categories'></textarea>
 				</div>
 				<div>
-					<span v-for='tag in file.tags.split(/\s/)' :tag='tag' class="badge badge-pill badge-secondary" style='margin-right:2px;'>{{tag}}</span>
+					<span v-for='tag in file.tags.toLowerCase().split(/\s/).sort()' :tag='tag' class="badge badge-pill badge-secondary" style='margin-right:2px;'>{{tag}}</span>
 				</div>
 				<div class='info_message'></div>
 			</div>
