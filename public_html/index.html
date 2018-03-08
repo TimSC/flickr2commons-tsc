@@ -2,65 +2,329 @@
 <html><head>
 <META NAME="ROBOTS" CONTENT="NOINDEX, NOFOLLOW">
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<link rel="stylesheet" href="//tools-static.wmflabs.org/cdnjs/ajax/libs/twitter-bootstrap/4.0.0-alpha.2/css/bootstrap.min.css">
-<link rel="stylesheet" href="//tools-static.wmflabs.org/cdnjs/ajax/libs/tether/1.1.1/css/tether.min.css">
-<link rel="stylesheet" type="text/css" href="/magnustools/resources/css/common.css">
-<script src='//tools-static.wmflabs.org/cdnjs/ajax/libs/jquery/1.12.1/jquery.min.js'></script>
-<script src='//tools-static.wmflabs.org/cdnjs/ajax/libs/tether/1.1.1/js/tether.min.js'></script>
-<script src='//tools-static.wmflabs.org/cdnjs/ajax/libs/twitter-bootstrap/4.0.0-alpha.2/js/bootstrap.min.js'></script>
-<script src="/magnustools/resources/js/common.js"></script>
-<script src="/tooltranslate/tt.js"></script>
-<script src="./main.js"></script>
-<style type="text/css"></style>
-<script type='text/javascript'></script>
-<!--header_misc-->
+<title tt="toolname"></title>
+<link rel="stylesheet" href="https://tools-static.wmflabs.org/cdnjs/ajax/libs/twitter-bootstrap/4.0.0/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://tools-static.wmflabs.org/magnustools/resources/html/wikimedia.css">
+<script src="https://tools-static.wmflabs.org/cdnjs/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://tools-static.wmflabs.org/cdnjs/ajax/libs/twitter-bootstrap/4.0.0/js/bootstrap.bundle.min.js"></script>
+<script src="https://tools-static.wmflabs.org/cdnjs/ajax/libs/vue/2.5.13/vue.min.js"></script>
+<script src="https://tools-static.wmflabs.org/cdnjs/ajax/libs/vue-router/3.0.1/vue-router.min.js"></script>
+<script src="https://tools-static.wmflabs.org/cdnjs/ajax/libs/jquery.lazyload/1.9.1/jquery.lazyload.min.js"></script>
+<script src="https://tools-static.wmflabs.org/magnustools/resources/js/wikidata.js"></script>
+<script src="https://tools-static.wmflabs.org/tooltranslate/tt.js"></script>
+<script src="https://tools-static.wmflabs.org/magnustools/resources/js/flickr2commons.js"></script>
 
-<script type='text/javascript'>
-function bootstrap4_compatability () {
-	$('input[type=text]').addClass('form-control') ;
-	$('input[type=number]').addClass('form-control') ;
-//	$('input[type=select]').addClass('form-control') ;
-//	$('input[type=radio]').css({'padding-left':'20px'}) ;
-//	$('input[type=checkbox]').css({'padding-left':'20px'}) ;
-	$('textarea').addClass('form-control') ;
+<style>
+div.flickr_thumb {
+	display:table-cell;
+	padding:2px;
+	width:150px;
+	vertical-align:top;
 }
-
-$(document).ready ( function () {
-	bootstrap4_compatability() ;
-} ) ;
-</script>
+div.flickr_box {
+	display:table-cell;
+	padding:2px;
+	width:100%;
+	vertical-align:top;
+}
+div.flickr-file {
+	margin-bottom:1px;
+	padding:2px;
+}
+div.f2c_status_ready {
+}
+div.f2c_status_transfer {
+	background-color:#36c;
+}
+div.f2c_status_done {
+	background-color:#00af89;
+}
+div.f2c_status_error {
+	background-color:#d33;
+}
+</style>
 
 </head>
 
 <body>
-<div id="menubar"></div>
-<div id="main_content" class="container"><div class="row">
-	<div class="span12" style="margin-bottom:20px;margin-top:10px;">
 
-<div id='emergency' style='display:none'>
-<big>IF YOU SEE THIS, THINGS HAVE GONE VERY WRONG!</big><br/>
-Wait half an hour, then complain to <a href='mailto:magnusmanske@gmail.com'>management</a>.
-<script>
-$(document).ready ( function() {
-	setTimeout ( function(){$('#emergency').show();} , 2000 ) ; // Show after 2 sec
-} ) ;
-</script>
-</div>
+<div id='app' class="container">
 
-</div>
-</div>
-</div>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
 
-<div class='container-fluid' style='margin:5px;'>
+  <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
 
-<div class="row" id='result_container'>
-	<form class='form-inline'>
-	<div class="span12" id='loading' style='display:none'><i>Loading data...</i><br/><span id='loaded'></span></div>
-	<div class="span12" id='results' style='display:none'></div>
-	</form>
+
+  <div class="collapse navbar-collapse" id="navbarSupportedContent">
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item" style='margin-right:10px;'>
+		<a href='#/' class="navbar-brand" tt='toolname'></a>
+      </li>
+
+      <li class="nav-item active">
+		<div class='' id='tooltranslate_wrapper'></div>
+      </li>
+
+    </ul>
+
+   	<widar></widar>
+    <search-box></search-box>
+    <a style="margin:0px;padding:0px;margin-top:4px;margin-left:10px;" href="/" target='_blank'><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Toolforge_logo.svg/32px-Toolforge_logo.svg.png" tt_title="wmf_powered" border="0" width="32px"></a>
+  </div>
+</nav>
+
+
+<router-view><i tt='loading'></i></router-view>
 </div>
-
-</div>
-
 </body>
+
+<!-- VUE TEMPLATES -->
+
+<template id='flickr-file-template'>
+	<div :class='"table-row flickr-file f2c_status_"+file.f2c_status.toLowerCase()' :flickr_file_id='file.id' :style='(hide_files_on_commons&&file.existing_filename_on_commons!=""&&file.f2c_status!="DONE")?"display:none":""'>
+		<div style='display:table-cell;padding:2px;min-width:20px;'>
+			<input v-if='!simple_filename && file.existing_filename_on_commons=="" && !filename_exists && file.f2c_status=="READY"' type='checkbox' v-model='is_checked' :id="'file_cb_'+file.id" class='form-control file_cb' @change='onCheckboxChange' />
+		</div>
+		<div class="flickr_thumb">
+			<a target='_blank' :href='file.page'>
+				<img :data-original='thumbnail_url' class='lazyload' border='0' width="150" height="150" />
+			</a>
+		</div>
+		<div class="flickr_box">
+			<div v-if='file.existing_filename_on_commons!=""' class='file_on_commons'>
+				<div>
+					<span tt='already_exists'></span> <a target="_blank" :href="'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(file.existing_filename_on_commons)">{{file.existing_filename_on_commons}}</a>
+				</div>
+				<div>
+					<a target="_blank" :href="'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(file.existing_filename_on_commons)">
+						<img :data-original='"https://commons.wikimedia.org/wiki/Special:Redirect/file/"+encodeURIComponent(file.existing_filename_on_commons)+"?width=120"' class='lazyload' border='0' height='120px' width='auto' />
+					</a>
+				</div>
+			</div>
+			<div v-if='file.existing_filename_on_commons==""' style='margin-bottom:2px;'>
+				<div style='display:table-row;'>
+					<div style='display:table-cell;width:100%;vertical-align:top'>
+						<input :id="'filename_'+file.id" type='text' class='form-control new_filename' v-model='new_title' @keyup='checkFilenameOnCommons' />
+					</div>
+					<div style='display:table-cell;white-space:nowrap;vertical-align:top;min-width:40px;text-align:right;'>
+						<span v-if='checking_filename'><img src='https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Symbol_dot_dot_dot_violet.svg/32px-Symbol_dot_dot_dot_violet.svg.png' /></span>
+						<span v-else-if='!checking_filename && filename_exists'>
+							<a target='_blank' :href="'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(new_title)" tt_title='file_exists_warning'>
+								<img src='https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Symbol_unrelated.svg/32px-Symbol_unrelated.svg.png' border='0' class='filename_exists_on_commons' />
+							</a>
+						</span>
+						<span v-else-if='simple_filename' tt_title='simple_filename'>
+							<img src='https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Symbol_opinion_vote.svg/32px-Symbol_opinion_vote.svg.png' border='0' class='filename_exists_on_commons' />
+						</span>
+						<span v-else><img src='https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Art%C3%ADculo_bueno.svg/32px-Art%C3%ADculo_bueno.svg.png' /></span>
+					</div>
+				</div>
+				<div class='row' style='vertical-align:top;'>
+					<div :class='flickr_description!=""?"col-sm-7":"col-sm-12"'>
+						<textarea class='form-control file_description' tt_placeholder='description' tt_title='description_tt' rows='2' style='width:100%;margin-top:5px;' v-model='new_description'></textarea>
+					</div>
+					<div v-if='flickr_description!=""' class='col-sm-5'>
+						<div v-if='file.description._content!=""' class="card" style='margin-top:5px;'>
+							<div class="card-body" style='padding:5px'>
+								<h5 class="card-title" style='margin-bottom:2px' tt='flickr_description'></h5>
+								<p class="card-text" style='font-size:9pt;line-height:1em;padding:1px;max-height:150px;overflow:auto'>
+									{{file.description._content}}
+								</p>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class='row' style='vertical-align:top;'>
+					<div class='col-sm-6'>
+						<textarea class='form-control categories' tt_placeholder='categories' tt_title='categories_tt' rows=2 style='width:100%;margin-top:5px;' v-model='categories'></textarea>
+					</div>
+					<div class='col-sm-6'>
+						<label>
+							<input type='checkbox' class='auto_categories' :id='"file_autocats_"+file.id' />
+							<span tt='auto_cats'></span>
+						</label>
+					</div>
+				</div>
+				<div>
+					<span v-for='tag in file.tags.toLowerCase().split(/\s/).sort()' :tag='tag' class="badge badge-pill badge-secondary" style='margin-right:2px;'>{{tag}}</span>
+				</div>
+				<div class='info_message'></div>
+			</div>
+		</div>
+	</div>
+</template>
+
+
+<template id='main-page-template'>
+	<div>
+		<div>
+			<div style='float:right;font-size:20pt' tt_title='toggle_main_form'>
+				<a href='#' @click.prevent='form_is_visible=!form_is_visible'>⚙</a>
+			</div>
+			<div v-if='is_authorized'>
+				Welcome, {{flickr2commons.userinfo.name}}!
+			</div>
+			<div v-else>
+				<span tt='auth_warning'></span>
+				<a href='#' @click.prevent='checkLogin'>⟳</a>
+				<span v-if='checking_auth'>
+					<img src="https://upload.wikimedia.org/wikipedia/commons/2/21/Spinning_Dancer.gif" width="16px" />
+				</span>
+			</div>
+		</div>
+		
+		<div v-if='form_is_visible'>
+			<hr/>
+			<p tt='enter_blurb'></p>
+			<form>
+				<div class="form-group row">
+					<label class="col-sm-3 col-form-label" tt="url"></label>
+					<div class="col-sm-9">
+						<input type="text" class="form-control" v-model='url' tt_placeholder="url_tt" id='url_input' >
+					</div>
+				</div>
+				<div class="form-group row">
+					<label class="col-sm-3 col-form-label" tt="flickr_id"></label>
+					<div class="col-sm-9">
+						<input type="text" class="form-control" v-model='user' tt_placeholder="flickr_id_tt">
+					</div>
+				</div>
+				<div class="form-group row">
+					<label class="col-sm-3 col-form-label" tt="flickr_photoset_id"></label>
+					<div class="col-sm-9">
+						<input type="text" class="form-control" v-model='photoset' tt_placeholder="flickr_photoset_tt">
+					</div>
+				</div>
+				<div class="form-group row">
+					<label class="col-sm-3 col-form-label" tt="flickr_group_id"></label>
+					<div class="col-sm-9">
+						<input type="text" class="form-control" v-model='group' tt_placeholder="flickr_group_tt">
+					</div>
+				</div>
+				<div class="form-group row">
+					<label class="col-sm-3 col-form-label" tt="flickr_photo_id"></label>
+					<div class="col-sm-9">
+						<input type="text" class="form-control" v-model='photo' tt_placeholder="flickr_photo_tt">
+					</div>
+				</div>
+				<div class="form-group row">
+					<label class="col-sm-3 col-form-label" tt="flickr_tag"></label>
+					<div class="col-sm-9">
+						<input type="text" class="form-control" v-model='tag' tt_placeholder="flickr_tag_tt">
+					</div>
+				</div>
+				<div class="form-group row">
+					<label class="col-sm-3 col-form-label" tt="max_pictures"></label>
+					<div class="col-sm-9">
+						<input type="numeric" class="form-control" v-model='max_pictures' tt_placeholder="max_pictures_tt">
+					</div>
+				</div>
+				<div class="form-group row">
+					<label class="col-sm-3 col-form-label"></label>
+					<div class="col-sm-9">
+						<button v-if='is_authorized' class='btn btn-outline-primary' tt='run' @click.prevent='doRun'></button>
+					</div>
+				</div>
+			</form>
+		</div>
+
+		<div v-if='last_message!=""' class="text-success" style='text-align:center'>{{last_message}}</div>
+		<div v-if='last_error!=""' class="bg-danger text-white" style='text-align:center'>{{last_error}}</div>
+
+		<div v-if='!running && has_run'>
+			<hr/>
+			<div>
+				<form>
+					<div class="form-group row">
+						<label class="col-sm-4 col-form-label" tt="add2every_desc"></label>
+						<div class="col-sm-8">
+							<textarea rows='2' class="form-control add2every_desc" tt_placeholder="add2every_desc_tt" v-model='add2every_desc' ></textarea>
+						</div>
+					</div>
+					<div class="form-group row">
+						<label class="col-sm-4 col-form-label" tt="append_everywhere"></label>
+						<div class="col-sm-8">
+							<textarea rows='2' class="form-control append_everywhere" tt_placeholder="append_everywhere_tt" v-model='append_everywhere' ></textarea>
+						</div>
+					</div>
+					<div class="form-group row">
+						<label class="col-sm-4 col-form-label" tt='no_auto_desc'></label>
+						<div class="col-sm-8" style='text-align:left;padding-top:10pt;'>
+							<input type="checkbox" class="form-control no_auto_desc" v-model='no_auto_desc' style='width:auto;' />
+						</div>
+					</div>
+					
+					<div class="form-group row">
+						<div class="col-sm-4" style='vertical-align:top;'>
+							<div>
+								<label>
+									<input type='radio' name='which_files' v-model='which_files' value='all' checked /> <span tt='all'></span>
+									<span tt='files'></span>
+								</label>
+							</div>
+							<div>
+								<span v-if='Object.keys(tags).length>0'>
+									<label><input type='radio' name='which_files' v-model='which_files' value='with' /> <span tt='with'></span></label>
+									/
+									<label><input type='radio' name='which_files' v-model='which_files' value='without' /> <span tt='without'></span></label>
+									<select id='which_tag' v-model='selected_tag'>
+										<option v-for='(list,tag_name) in tags' :value='tag_name'>{{tag_name}}</option>
+									</select>
+								</span>
+							</div>
+						</div>
+						<div class="col-sm-8" style='vertical-align:top;'>
+							<div>
+								<div class="btn-group" role="group">
+									<button class='btn btn-outline-primary' tt='select_all' @click.prevent='doSelectAll'></button>
+									<button class='btn btn-outline-primary' tt='deselect_all' @click.prevent='doDeselectAll'></button>
+								</div>
+							</div>
+							<div style='margin-top:2px;'>
+								<div class="input-group">
+									<input type='text' tt_placeholder='prefix_string' v-model='prefix_string' class="form-control" style="width:250px;display:inline" />
+									<button class='btn btn-outline-primary' tt='prefix_selected' @click.prevent='doPrefix'></button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="form-group row">
+						<label class="col-sm-4 col-form-label" tt="autodetect_cats"></label>
+						<div class="col-sm-8">
+							<div class="btn-group" role="group">
+								<button class='btn btn-outline-primary' tt='yes' @click.prevent='onAutoCats(true)'></button>
+								<button class='btn btn-outline-primary' tt='no' @click.prevent='onAutoCats(false)'></button>
+							</div>
+						</div>
+					</div>
+
+				</form>
+			</div>
+
+
+			<div class='alert-secondary' style='margin-top:2px;padding:2px;'>
+				<span tt='files_currently_selected' :tt1='currently_selected' :tt2='filename_exists_on_commons'></span>
+				<label v-if='on_commons>0'>
+					<input type='checkbox' v-model='hide_files_on_commons' @change='onHideCommonsChange' />
+					<span tt='hide_files_on_commons' :tt1='on_commons'></span>
+				</label>
+			</div>
+			<div style='margin-top:2px;min-height:40px;'>
+				<button v-if='currently_selected>0 && transfers_running==0' class='btn btn-outline-success' tt='transfer2commons' @click='transferAll'></button>
+				<button v-if='transfers_running>0' :class='"btn btn-outline-danger"+(stop_transfers?" disabled":"")' tt='stop_transfers' @click='stopTransfers'></button>
+			</div>
+			<hr/>
+			<div style='display:table;width:100%;'>
+				<flickr-file v-for='f in files' :key='f.id' :hide_files_on_commons='hide_files_on_commons' :file='f' v-on:checkboxchanged='updateCurrentlySelected'></flickr-file>
+			</div>
+		</div>
+
+	</div>
+</template>
+
+<script src="index_vue.js"></script>
+
 </html>
