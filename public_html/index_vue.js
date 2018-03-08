@@ -554,6 +554,7 @@ var MainPage = Vue.extend ( {
 
 			var file_node = $('div[flickr_file_id="'+o.photo.id+'"]') ;
 			o.filename_on_commons = $.trim(file_node.find('input.new_filename').val()) ;
+			while ( o.filename_on_commons.length > 250 ) o.filename_on_commons.replace ( /.(\.[a-z]+)$/i , '$1' ) ;
 			o.new_desc = $.trim(file_node.find('textarea.file_description').val()) ;
 			if ( o.new_desc == '' && !me.no_auto_desc ) o.new_desc = $.trim(file.description._content) ;
 			if ( $.trim(me.add2every_desc) != '' ) o.new_desc = $.trim ( o.new_desc + "\n" + $.trim(me.add2every_desc) ) ;
