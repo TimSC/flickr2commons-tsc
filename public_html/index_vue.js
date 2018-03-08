@@ -248,7 +248,8 @@ var MainPage = Vue.extend ( {
 				}
 				me.files = [] ;
 				$.each ( d.results , function ( k , v ) {
-					me.files.push ( me.completeFileProperties(v) ) ;
+					var file = me.completeFileProperties(v) ;
+					me.addFileToList ( file ) ;
 				} ) ;
 				me.finishFileLoad () ;
 			} ) ;
@@ -377,6 +378,11 @@ var MainPage = Vue.extend ( {
 				flickr2commons.getUserInfo ( nsid , fin ) ;
 			} ) ;
 		} ,
+		addFileToList : function ( file ) {
+			var me = this ;
+			if ( typeof flickr2commons.licenses[file.license] == 'undefined' ) return ; // Bad license
+			me.files.push ( file ) ;
+		} ,
 		doRunPhotos : function ( photos ) {
 			var me = this ;
 			var running = 0 ;
@@ -392,7 +398,8 @@ var MainPage = Vue.extend ( {
 				function fin2() {
 					if ( typeof photo == 'undefined' || typeof sizes == 'undefined' ) return ;
 					photo.sizes = sizes ;
-					me.files.push ( me.completeFileProperties ( me.rewritePhotoProperties ( photo ) ) ) ;
+					var file = me.completeFileProperties ( me.rewritePhotoProperties ( photo ) ) ;
+					me.addFileToList ( file ) ;
 					fin() ;
 				}
 				flickr2commons.getFileInfoFromFlickr ( {photo_id:photo_id} , function ( d ) {
