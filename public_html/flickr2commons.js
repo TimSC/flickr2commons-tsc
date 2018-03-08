@@ -26,7 +26,7 @@ var flickr2commons = {
 			callback ( d.error ) ;
 		}) ;
 	} ,
-	generateFilenameForCommons : function ( file ) {
+	generateFilenameForCommons : function ( file , default_prefix = '"Unnamed Flickr file"' ) {
 		var t = file.title ;
 		t = t.replace ( /_/g , ' ' ) ;
 		t = t.replace ( /[\:\/\|]/g , ' ' ) ;
@@ -34,9 +34,10 @@ var flickr2commons = {
 		t = $.trim ( t ) ;
 		t = t.replace ( /\.(JPG|JPEG|PNG|TIF|TIFF)$/i , '' ) ;
 		if ( t.length > 230 ) t = t.substr ( 0 , 230 ) ;
-		if ( $.trim(t) == '' ) t = "Unnamed Flickr file" ;
+		if ( $.trim(t) == '' ) t = default_prefix ;
 		t += " (" + file.id + ")" ;
 		t += '.' + file.originalformat.toLowerCase() ;
+		t = $.trim(t) ; // Paranoia
 		return t ;
 	} ,
 	resolveUsername : function ( user , callback ) {
@@ -373,7 +374,7 @@ var flickr2commons = {
 			url:o.best_size.source,
 			desc:o.information_template,
 			ignorewarnings:1,
-			comment:'Transferred from Flickr via #'+widar.toolname,
+			comment:'Transferred from Flickr via #'+(o.toolname||widar.toolname),
 			rand:Math.random(),
 			botmode:1
 		} ;

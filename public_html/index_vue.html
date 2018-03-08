@@ -83,9 +83,9 @@ div.f2c_status_error {
 <!-- VUE TEMPLATES -->
 
 <template id='flickr-file-template'>
-	<div :class='"table-row flickr-file f2c_status_"+file.f2c_status.toLowerCase()' :flickr_file_id='file.id'>
+	<div :class='"table-row flickr-file f2c_status_"+file.f2c_status.toLowerCase()' :flickr_file_id='file.id' :style='(hide_files_on_commons&&file.existing_filename_on_commons!=""&&file.f2c_status!="DONE")?"display:none":""'>
 		<div style='display:table-cell;padding:2px;min-width:20px;'>
-			<input v-if='!exists_on_commons && !filename_exists && file.f2c_status=="READY"' type='checkbox' v-model='is_checked' :id="'file_cb_'+file.id" class='form-control file_cb' @change='onCheckboxChange' />
+			<input v-if='!simple_filename && file.existing_filename_on_commons=="" && !filename_exists && file.f2c_status=="READY"' type='checkbox' v-model='is_checked' :id="'file_cb_'+file.id" class='form-control file_cb' @change='onCheckboxChange' />
 		</div>
 		<div class="flickr_thumb">
 			<a target='_blank' :href='file.page'>
@@ -93,14 +93,18 @@ div.f2c_status_error {
 			</a>
 		</div>
 		<div class="flickr_box">
-			<div>{{file.f2c_status}}</div>
-			<div v-if='exists_on_commons'>
-				<span tt='already_exists'></span> <a target="_blank" :href="'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(file.existing_filename_on_commons)">{{file.existing_filename_on_commons}}</a>
+			<div v-if='file.existing_filename_on_commons!=""'>
+				<div>
+					<span tt='already_exists'></span> <a target="_blank" :href="'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(file.existing_filename_on_commons)">{{file.existing_filename_on_commons}}</a>
+				</div>
+				<div>
+					<img :data-original='"https://commons.wikimedia.org/wiki/Special:Redirect/file/"+encodeURIComponent(file.existing_filename_on_commons)+"?width=120"' class='lazyload' border='0' height='120px' width='auto' />
+				</div>
 			</div>
-			<div v-if='!exists_on_commons' style='margin-bottom:2px;'>
+			<div v-if='file.existing_filename_on_commons==""' style='margin-bottom:2px;'>
 				<div style='display:table-row;'>
 					<div style='display:table-cell;width:100%;vertical-align:top'>
-						<input :id="'filename_'+file.id" type='text' class='form-control' v-model='new_title' @keyup='checkFilenameOnCommons' />
+						<input :id="'filename_'+file.id" type='text' class='form-control new_filename' v-model='new_title' @keyup='checkFilenameOnCommons' />
 					</div>
 					<div style='display:table-cell;white-space:nowrap;vertical-align:top;min-width:40px;text-align:right;'>
 						<span v-if='checking_filename'><img src='https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Symbol_dot_dot_dot_violet.svg/32px-Symbol_dot_dot_dot_violet.svg.png' /></span>
@@ -109,12 +113,34 @@ div.f2c_status_error {
 								<img src='https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Symbol_unrelated.svg/32px-Symbol_unrelated.svg.png' border='0' class='filename_exists_on_commons' />
 							</a>
 						</span>
+						<span v-else-if='simple_filename' tt_title='simple_filename'>
+							<img src='https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Symbol_opinion_vote.svg/32px-Symbol_opinion_vote.svg.png' border='0' class='filename_exists_on_commons' />
+						</span>
 						<span v-else><img src='https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Art%C3%ADculo_bueno.svg/32px-Art%C3%ADculo_bueno.svg.png' /></span>
 					</div>
 				</div>
-				<div>
-					<textarea class='form-control file_description' tt_placeholder='description' tt_title='description_tt' rows=3 style='width:100%;margin-top:5px;' v-model='new_description'></textarea>
+				<div class='row' style='vertical-align:top;'>
+					<div :class='flickr_description!=""?"col-sm-7":"col-sm-12"'>
+						<textarea class='form-control file_description' tt_placeholder='description' tt_title='description_tt' rows='2' style='width:100%;margin-top:5px;' v-model='new_description'></textarea>
+					</div>
+					<div v-if='flickr_description!=""' class='col-sm-5'>
+						<div v-if='file.description._content!=""' class="card" style='margin-top:5px;'>
+							<div class="card-body" style='padding:5px'>
+								<h5 class="card-title" style='margin-bottom:2px' tt='flickr_description'></h5>
+								<p class="card-text" style='font-size:9pt;line-height:1em;padding:1px;max-height:150px;overflow:auto'>
+									{{file.description._content}}
+								</p>
+							</div>
+						</div>
+					</div>
 				</div>
+				<div>
+					<textarea class='form-control categories' tt_placeholder='categories' tt_title='categories_tt' rows=2 style='width:100%;margin-top:5px;' v-model='categories'></textarea>
+				</div>
+				<div>
+					<span v-for='tag in file.tags.split(/\s/)' :tag='tag' class="badge badge-pill badge-secondary" style='margin-right:2px;'>{{tag}}</span>
+				</div>
+				<div class='info_message'></div>
 			</div>
 		</div>
 	</div>
@@ -124,6 +150,9 @@ div.f2c_status_error {
 <template id='main-page-template'>
 	<div>
 		<div>
+			<div style='float:right;font-size:20pt' tt_title='toggle_main_form'>
+				<a href='#' @click.prevent='form_is_visible=!form_is_visible'>⚙</a>
+			</div>
 			<div v-if='is_authorized'>
 				Welcome, {{flickr2commons.userinfo.name}}!
 			</div>
@@ -134,11 +163,11 @@ div.f2c_status_error {
 					<img src="https://upload.wikimedia.org/wikipedia/commons/2/21/Spinning_Dancer.gif" width="16px" />
 				</span>
 			</div>
-			<hr/>
 		</div>
 		
-		<div>
-			<p>Enter a user, photoset, group, or photo:</p>
+		<div v-if='form_is_visible'>
+			<hr/>
+			<p tt='enter_blurb'></p>
 			<form>
 				<div class="form-group row">
 					<label class="col-sm-3 col-form-label" tt="url"></label>
@@ -197,31 +226,76 @@ div.f2c_status_error {
 		<div v-if='!running && has_run'>
 			<hr/>
 			<div>
-				<label><input type='radio' name='which_files' v-model='which_files' value='all' checked /> <span tt='all'></span></label>
-				<span tt='files'></span>
-				<span v-if='Object.keys(tags).length>0'>
-					<label><input type='radio' name='which_files' v-model='which_files' value='with' /> <span tt='with'></span></label>
-					/
-					<label><input type='radio' name='which_files' v-model='which_files' value='without' /> <span tt='without'></span></label>
-					<select id='which_tag' v-model='selected_tag'>
-						<option v-for='(list,tag_name) in tags' :value='tag_name'>{{tag_name}}</option>
-					</select>
-				</span>
-				<button class='btn btn-outline-primary' tt='select_all' @click.prevent='doSelectAll'></button>
-				<button class='btn btn-outline-primary' tt='deselect_all' @click.prevent='doDeselectAll'></button>
+				<form>
+					<div class="form-group row">
+						<label class="col-sm-4 col-form-label" tt="add2every_desc"></label>
+						<div class="col-sm-8">
+							<textarea rows='2' class="form-control add2every_desc" tt_placeholder="add2every_desc_tt" v-model='add2every_desc' ></textarea>
+						</div>
+					</div>
+					<div class="form-group row">
+						<label class="col-sm-4 col-form-label" tt="append_everywhere"></label>
+						<div class="col-sm-8">
+							<textarea rows='2' class="form-control append_everywhere" tt_placeholder="append_everywhere_tt" v-model='append_everywhere' ></textarea>
+						</div>
+					</div>
+					<div class="form-group row">
+						<label class="col-sm-4 col-form-label" tt='no_auto_desc'></label>
+						<div class="col-sm-8" style='text-align:left;padding-top:10pt;'>
+							<input type="checkbox" class="form-control no_auto_desc" v-model='no_auto_desc' style='width:auto;' />
+						</div>
+					</div>
+					
+
+
+					<div class="form-group row">
+						<div class="col-sm-4" style='vertical-align:top;'>
+							<div>
+								<label>
+									<input type='radio' name='which_files' v-model='which_files' value='all' checked /> <span tt='all'></span>
+									<span tt='files'></span>
+								</label>
+							</div>
+							<div>
+								<span v-if='Object.keys(tags).length>0'>
+									<label><input type='radio' name='which_files' v-model='which_files' value='with' /> <span tt='with'></span></label>
+									/
+									<label><input type='radio' name='which_files' v-model='which_files' value='without' /> <span tt='without'></span></label>
+									<select id='which_tag' v-model='selected_tag'>
+										<option v-for='(list,tag_name) in tags' :value='tag_name'>{{tag_name}}</option>
+									</select>
+								</span>
+							</div>
+						</div>
+						<div class="col-sm-8" style='vertical-align:top;'>
+							<div>
+								<button class='btn btn-outline-primary' tt='select_all' @click.prevent='doSelectAll'></button>
+								<button class='btn btn-outline-primary' tt='deselect_all' @click.prevent='doDeselectAll'></button>
+							</div>
+							<div>
+								<input type='text' tt_placeholder='prefix_string' v-model='prefix_string' class="form-control" style="width:350px;display:inline" />
+								<button class='btn btn-outline-primary' tt='prefix_selected' @click.prevent='doPrefix'></button>
+							</div>
+						</div>
+					<div>
+				</form>
 			</div>
-			<div>
-				<input type='text' tt_placeholder='prefix_string' v-model='prefix_string' class="form-control" style="width:350px;display:inline" />
-				<button class='btn btn-outline-primary' tt='prefix_selected' @click.prevent='doPrefix'></button>
+
+
+			<div class='alert-secondary' style='margin-top:2px;padding:2px;'>
+				<span tt='files_currently_selected' :tt1='currently_selected' :tt2='filename_exists_on_commons'></span>
+				<label>
+					<input type='checkbox' v-model='hide_files_on_commons' />
+					<span tt='hide_files_on_commons'></span>
+				</label>
 			</div>
-			<div class='alert-secondary' style='margin-top:2px;padding:2px;' tt='files_currently_selected' :tt1='currently_selected' :tt2='filename_exists_on_commons'></div>
-			<div v-if='currently_selected>0' style='margin-top:2px'>
-				<button v-if='transfers_running==0' class='btn btn-outline-success' tt='transfer2commons' @click='transferAll'></button>
+			<div style='margin-top:2px;min-height:40px;'>
+				<button v-if='currently_selected>0 && transfers_running==0' class='btn btn-outline-success' tt='transfer2commons' @click='transferAll'></button>
 				<button v-if='transfers_running>0' :class='"btn btn-outline-danger"+(stop_transfers?" disabled":"")' tt='stop_transfers' @click='stopTransfers'></button>
 			</div>
 			<hr/>
 			<div style='display:table;width:100%;'>
-				<flickr-file v-for='f in files' :key='f.id' :file='f' v-on:checkboxchanged='updateCurrentlySelected'></flickr-file>
+				<flickr-file v-for='f in files' :key='f.id' :hide_files_on_commons='hide_files_on_commons' :file='f' v-on:checkboxchanged='updateCurrentlySelected'></flickr-file>
 			</div>
 		</div>
 
