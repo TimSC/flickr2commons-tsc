@@ -12,7 +12,7 @@
 <script src="https://tools-static.wmflabs.org/cdnjs/ajax/libs/jquery.lazyload/1.9.1/jquery.lazyload.min.js"></script>
 <script src="https://tools-static.wmflabs.org/magnustools/resources/js/wikidata.js"></script>
 <script src="https://tools-static.wmflabs.org/tooltranslate/tt.js"></script>
-<script src="flickr2commons.js"></script>
+<script src="https://tools-static.wmflabs.org/magnustools/resources/js/flickr2commons.js"></script>
 
 <style>
 div.flickr_thumb {
@@ -98,7 +98,9 @@ div.f2c_status_error {
 					<span tt='already_exists'></span> <a target="_blank" :href="'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(file.existing_filename_on_commons)">{{file.existing_filename_on_commons}}</a>
 				</div>
 				<div>
-					<img :data-original='"https://commons.wikimedia.org/wiki/Special:Redirect/file/"+encodeURIComponent(file.existing_filename_on_commons)+"?width=120"' class='lazyload' border='0' height='120px' width='auto' />
+					<a target="_blank" :href="'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(file.existing_filename_on_commons)">
+						<img :data-original='"https://commons.wikimedia.org/wiki/Special:Redirect/file/"+encodeURIComponent(file.existing_filename_on_commons)+"?width=120"' class='lazyload' border='0' height='120px' width='auto' />
+					</a>
 				</div>
 			</div>
 			<div v-if='file.existing_filename_on_commons==""' style='margin-bottom:2px;'>
