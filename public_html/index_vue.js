@@ -2,7 +2,7 @@
 if (location.protocol != 'https:') location.href = 'https:' + window.location.href.substring(window.location.protocol.length); // ENFORCE HTTPS
 else if ( /^[^#]+\?/.test(window.location.href) ) {  // AUTO-FORWARD BASED ON OLD VERSION PARAMETERS
 
-	function getUrlVars () {
+function getUrlVars () {
 		var vars = {} ;
 		var hashes = window.location.href.slice(window.location.href.indexOf('?') + 1).replace(/#.*$/,'').split('&');
 		$.each ( hashes , function ( i , j ) {
@@ -591,6 +591,10 @@ var MainPage = Vue.extend ( {
 						file.f2c_status = 'ERROR' ;
 						file_node.find('div.info_message').text(o.error) ;
 					}
+
+					// Logging
+					$.getJSON ( 'https://tools.wmflabs.org/magnustools/logger.php?tool=flickr2commons&method=upload to commons&callback=?' , function(j){} ) ;
+
 					setTimeout ( function(){me.transferAll()} , 10 ) ; // Start next one
 				} ) ;
 			} ) ;
@@ -622,6 +626,9 @@ var tt ;
 
 
 $(document).ready ( function () {
+	flickr2commons.oauth_uploader_base = 'api.php' ;
+	flickr2commons.oauth_uploader_api = 'api.php?botmode=1' ;
+	flickr2commons.flinfo = 'flinfo_proxy.php' ;
 
 	var cnt = 2 ;
 	function fin () {
@@ -647,7 +654,7 @@ $(document).ready ( function () {
 	} ) ;
 
 	// Load metadata
-	$.get ( '/fist/file_candidates/api.php' , {
+	$.get ( 'api.php' , {
 		meta:'all',
 		action:'get_flickr_key'
 	} , function ( d ) {

@@ -6,16 +6,17 @@ $action = get_request ( 'action' , '' ) ;
 
 $out = ['status'=>'OK'] ;
 
-if ( $action == 'check_flickr_files_in_commons' ) {
-
-	$data = json_decode ( get_request ( 'data' , '{}' ) ) ;
-	$db = openDB ( 'commons' , 'wikimedia' ) ;
-	$out['data']['files'] = [] ;
-
+function urlBatchGenerator ( $data , $batch_size = 5000 ) {
+	global $db ;
 	$urls = [] ;
+	$user_names = [] ;
+	if ( isset($data) and isset($data->owners) ) {
+		foreach ( $data->owners AS $nsid => $owner_data ) {
+			if ( $nsid!=$owner_data[0] ) $user_names = $owner_data ;
+			else $user_names = [$nsid] ;
+		}
+	}
 	foreach ( $data->files AS $nsid => $file_ids ) {
-		if ( isset($data->owners->$nsid) and $data->owners->$nsid != $nsid ) $user_names = $data->owners->$nsid ;
-		else $user_names = [$nsid] ;
 		foreach ( $file_ids AS $file_id ) {
 			foreach ( ['http','https'] AS $protocol ) {
 				foreach ( ['','www.'] AS $p1 ) {
@@ -23,6 +24,9 @@ if ( $action == 'check_flickr_files_in_commons' ) {
 						foreach ( ['photo','photos'] AS $p2 ) {
 							foreach ( ['','/'] AS $p3 ) {
 								$urls[] = $db->real_escape_string ( "$protocol://com.flickr.$p1/$p2/$user/$file_id$p3" ) ;
+								if ( count($urls) < $batch_size ) continue ;
+								yield $urls ;
+								$urls = [] ;
 							}
 						}
 					}
@@ -30,14 +34,33 @@ if ( $action == 'check_flickr_files_in_commons' ) {
 			}
 		}
 	}
+	if ( count($urls)>0 ) yield $urls ;
+	else yield from [] ;
+}
 
-	$sql = "SELECT DISTINCT page_title,el_to FROM page,externallinks WHERE page_id=el_from AND page_namespace=6 AND el_index IN ('" . implode("','",$urls) . "')" ;
-	$result = getSQL ( $db , $sql ) ;
-	while($o = $result->fetch_object()) {
-		if ( !preg_match ( '/\/(\d+)\/{0,1}$/' , $o->el_to , $m ) ) continue ; // Huh?
-		$out['data']['files'][$m[1]] = $o->page_title ;
+if ( $action == 'check_flickr_files_in_commons' ) {
+
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+	$data = json_decode ( get_request ( 'data' , '{}' ) ) ;
+	$db = openDB ( 'commons' , 'wikimedia' ) ;
+	$out['data']['files'] = [] ;
+
+	foreach ( urlBatchGenerator($data) AS $urls ) {
+		$sql = "SELECT DISTINCT page_title,el_to FROM page,externallinks WHERE page_id=el_from AND page_namespace=6 AND el_index IN ('" . implode("','",$urls) . "')" ;
+		$result = getSQL ( $db , $sql ) ;
+		while($o = $result->fetch_object()) {
+			if ( !preg_match ( '/\/(\d+)\/{0,1}$/' , $o->el_to , $m ) ) continue ; // Huh?
+			$out['data']['files'][$m[1]] = $o->page_title ;
+		}
+		#$out['sql'][] = $sql ; # Debugging output
 	}
-	$out['sql'][] = $sql ;
+
+} else if ( $action == 'get_flickr_key' ) {
+
+	$out['data'] = trim(file_get_contents('../flickr_key.txt')) ;
 
 } else if ( $action == 'check_existing_commons_filenames' ) {
 
@@ -57,6 +80,14 @@ if ( $action == 'check_flickr_files_in_commons' ) {
 		$out['data']['files'][$o->page_title] = 1 ;
 	}
 
+} else {
+
+	require_once '/data/project/magnustools/public_html/php/Widar.php' ;
+	$widar = new \Widar ( 'flickr2commons' ) ;
+	$widar->attempt_verification_auto_forward ( 'https://flickr2commons.toolforge.org/' ) ;
+	$widar->authorization_callback = 'https://flickr2commons.toolforge.org/api.php' ;
+	if ( $widar->render_reponse ( true ) ) exit ( 0 ) ;
+	$out['status'] = "Unknown action '{$action}'" ;
 }
 
 header('Content-type: application/json; charset=UTF-8');

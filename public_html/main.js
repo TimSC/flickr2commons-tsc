@@ -24,7 +24,7 @@ function runTool () {
 	}
 }
 
-var flickr_api_url = 'https://secure.flickr.com/services/rest' ;
+var flickr_api_url = 'https://flickr.com/services/rest' ;
 
 function getUserImagesByName ( name ) {
 	$.getJSON ( flickr_api_url+'/?jsoncallback=?' , {
