@@ -6,9 +6,9 @@ $action = get_request ( 'action' , '' ) ;
 
 $out = ['status'=>'OK'] ;
 
-function urlBatchGenerator ( $data , $batch_size = 5000 ) {
+function urlPathBatchGenerator ( $data , $batch_size = 5000 ) {
 	global $db ;
-	$urls = [] ;
+	$paths = [] ;
 	$user_names = [] ;
 	if ( isset($data) and isset($data->owners) ) {
 		foreach ( $data->owners AS $nsid => $owner_data ) {
@@ -18,23 +18,20 @@ function urlBatchGenerator ( $data , $batch_size = 5000 ) {
 	}
 	foreach ( $data->files AS $nsid => $file_ids ) {
 		foreach ( $file_ids AS $file_id ) {
-			foreach ( ['http','https'] AS $protocol ) {
-				foreach ( ['','www.'] AS $p1 ) {
-					foreach ( $user_names AS $user ) {
-						foreach ( ['photo','photos'] AS $p2 ) {
-							foreach ( ['','/'] AS $p3 ) {
-								$urls[] = $db->real_escape_string ( "$protocol://com.flickr.$p1/$p2/$user/$file_id$p3" ) ;
-								if ( count($urls) < $batch_size ) continue ;
-								yield $urls ;
-								$urls = [] ;
-							}
-						}
+
+			foreach ( $user_names AS $user ) {
+				foreach ( ['photo','photos'] AS $p1 ) {
+					foreach ( ['','/'] AS $p2 ) {
+						$paths[] = $db->real_escape_string ( "/$p1/$user/$file_id$p2" ) ;
+						if ( count($paths) < $batch_size ) continue ;
+						yield $paths ;
+						$paths = [] ;
 					}
 				}
 			}
 		}
 	}
-	if ( count($urls)>0 ) yield $urls ;
+	if ( count($paths)>0 ) yield $paths ;
 	else yield from [] ;
 }
 
@@ -48,11 +45,19 @@ error_reporting(E_ALL);
 	$db = openDB ( 'commons' , 'wikimedia' ) ;
 	$out['data']['files'] = [] ;
 
-	foreach ( urlBatchGenerator($data) AS $urls ) {
-		$sql = "SELECT DISTINCT page_title,el_to FROM page,externallinks WHERE page_id=el_from AND page_namespace=6 AND el_index IN ('" . implode("','",$urls) . "')" ;
+	$domains = [];
+	foreach ( ['http','https'] AS $protocol ) {
+		foreach ( ['','www.'] AS $subdomain ) {
+			$domains[] = $db->real_escape_string ( "$protocol://com.flickr.$subdomain" ) ;
+		}
+	}
+
+	foreach ( urlPathBatchGenerator($data) AS $paths ) {
+		$sql = "SELECT DISTINCT page_title,el_to_path FROM page,externallinks WHERE page_id=el_from AND page_namespace=6 AND el_to_domain_index IN ('" . implode("','", $domains) . "') AND el_to_path IN ('" . implode("','", $paths) . "')" ;
+
 		$result = getSQL ( $db , $sql ) ;
 		while($o = $result->fetch_object()) {
-			if ( !preg_match ( '/\/(\d+)\/{0,1}$/' , $o->el_to , $m ) ) continue ; // Huh?
+			if ( !preg_match ( '/\/(\d+)\/{0,1}$/' , $o->el_to_path , $m ) ) continue ; // Huh?
 			$out['data']['files'][$m[1]] = $o->page_title ;
 		}
 		#$out['sql'][] = $sql ; # Debugging output
