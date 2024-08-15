@@ -164,13 +164,14 @@ final class ToolforgeCommon {
 	}
 
 	private function getDBpassword () /*:string*/ {
-        if ('dev' === getenv('APP_ENV')) {
-            $this->mysqlUser = getenv('MYSQL_USER');
-            $this->mysqlPassword = getenv('MYSQL_PASSWORD');
-            $this->isLocal = true;
+		$this->mysqlUser = getenv('TOOL_REPLICA_USER');
+		$this->mysqlPassword = getenv('TOOL_REPLICA_PASSWORD');
 
-            return;
-        }
+		if ('dev' === getenv('APP_ENV')) {
+			$this->isLocal = true;
+		}
+
+		return;
 
 		if ( isset ( $this->tool_user_name ) and $this->tool_user_name != '' ) $user = $this->tool_user_name ;
 		else $user = str_replace ( 'tools.' , '' , get_current_user() ) ;
