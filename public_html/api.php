@@ -89,8 +89,8 @@ error_reporting(E_ALL);
 
 	require_once 'php/Widar.php' ;
 	$widar = new \Widar ( 'flickr2commons-ng' ) ;
-	$widar->attempt_verification_auto_forward ( 'https://flickr2commons.toolforge.org/' ) ;
-	$widar->authorization_callback = 'https://flickr2commons.toolforge.org/api.php' ;
+	$widar->attempt_verification_auto_forward ( 'https://flickr2commons-ng.toolforge.org/' ) ;
+	$widar->authorization_callback = 'https://flickr2commons-ng.toolforge.org/api.php' ;
 	if ( $widar->render_reponse ( true ) ) exit ( 0 ) ;
 	$out['status'] = "Unknown action '{$action}'" ;
 }
