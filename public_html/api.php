@@ -65,7 +65,7 @@ error_reporting(E_ALL);
 
 } else if ( $action == 'get_flickr_key' ) {
 
-	$out['data'] = trim(file_get_contents('../flickr_key.txt')) ;
+	$out['data'] = getenv('FLICKR_ACCESS_KEY') ;
 
 } else if ( $action == 'check_existing_commons_filenames' ) {
 
@@ -87,8 +87,8 @@ error_reporting(E_ALL);
 
 } else {
 
-	require_once '/data/project/magnustools/public_html/php/Widar.php' ;
-	$widar = new \Widar ( 'flickr2commons' ) ;
+	require_once 'php/Widar.php' ;
+	$widar = new \Widar ( 'flickr2commons-ng' ) ;
 	$widar->attempt_verification_auto_forward ( 'https://flickr2commons.toolforge.org/' ) ;
 	$widar->authorization_callback = 'https://flickr2commons.toolforge.org/api.php' ;
 	if ( $widar->render_reponse ( true ) ) exit ( 0 ) ;
@@ -99,6 +99,3 @@ header('Content-type: application/json; charset=UTF-8');
 print json_encode ( $out ) ;
 myflush();
 ob_end_flush() ;
-
-
-?>

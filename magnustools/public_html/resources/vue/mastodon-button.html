@@ -1,0 +1,78 @@
+<style>
+a.mastodon-share {
+    display: inline-block;
+    padding: 1em;
+    background: #000;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 0.5em;
+    margin: 1em 0;
+}
+a.mastodon-share:hover, a.mastodon-share:focus {
+    background: #369;
+    color: #fff;
+}
+button.mastodon-edit {
+    font-family: inherit;
+    font-size: 1.3em;
+    border: none;
+    cursor: pointer;
+    background: transparent;
+    transform: rotate(90deg);
+}
+</style>
+
+<template id="mastodon-button-template">
+<div class="btn-group">
+    <button href="#" rel="noreferrer noopener" target="mastodon" class="mastodon-button btn btn-outline-secondary" tt="mastodon_share_label" @click='onclick'>
+    </button>
+    <button v-if="instance!=''" href="#" @click.prevent="edit_instance" class="btn btn-outline-secondary" :tt_title="instance">✏️</button>
+</div>
+</template>
+
+
+<script>
+'use strict';
+
+// data-prompt="instance" 
+// data-edittext="✏️" 
+// data-editlabel="Edit your Mastodon instance" 
+
+Vue.component ( 'mastodon-button' , {
+	props : [ 'message' , 'target' ] ,
+	data : function () { return { instance:'' , ls_key:'mastodon-instance' } } ,
+    created : function () {
+        this.instance = localStorage.getItem(this.ls_key)||'';
+    } ,
+    mounted : function () {
+        if ( typeof tt!='undefined' ) tt.updateInterface(this.$el) ;
+    } ,
+    updated : function () {
+        if ( typeof tt!='undefined' ) tt.updateInterface(this.$el) ;
+    } ,
+    methods : {
+        onclick: function () {
+            let self = this;
+            if ( self.instance!='' ) return self.open_tab();
+            self.edit_instance(function(){
+                self.open_tab();
+            })
+        } ,
+        edit_instance: function() {
+            let instance = window.prompt(tt.t('enter_mastodon_instance'), this.instance);
+            if(instance) {
+                localStorage.setItem(this.ls_key, instance);
+                this.instance = instance;
+                if ( typeof callback!='undefined' ) callback();
+            }
+        } ,
+        open_tab: function() {
+            let url = 'https://'+this.instance+'/share?text='+encodeURIComponent(this.message)+'%0A'+encodeURIComponent(this.target);
+            window.open(url, 'mastodon').focus();
+        }
+    },
+    watch : {
+    } ,
+	template : '#mastodon-button-template'
+} ) ;
+</script>

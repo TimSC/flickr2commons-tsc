@@ -1,0 +1,5 @@
+toolforge-jobs run --image tf-php74 --schedule '9 9 * * *' --mem 100Mi --command 'find /data/project/magnustools/tmp/ -mtime +1 -exec rm -rf {} \;' cleanup-tmp
+toolforge-jobs run --image tf-php74 --schedule '37 3 * * *' --mem 2Gi --command '/data/project/magnustools/scripts/buggregator/update.php update' buggregator-update
+toolforge-jobs run --image tf-php74 --schedule '37 4 * * *' --mem 2Gi --command '/data/project/magnustools/scripts/buggregator/buggregator2toolinfo.php' buggregator-toolinfo
+toolforge-jobs run --image bullseye --schedule '15,45 * * * *' --mem 200Mi --command '/data/project/magnustools/scripts/monitor/monitor.php' tool-monitor
+toolforge-jobs run --image php8.2 --schedule '5,35 * * * *' --mem 200Mi --command '/data/project/magnustools/scripts/buggregator/update.php webstatus' buggregator-http-status

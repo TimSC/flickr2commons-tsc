@@ -1,0 +1,834 @@
+<link rel="stylesheet" href="https://tools-static.wmflabs.org/cdnjs/ajax/libs/leaflet/1.7.1/leaflet.min.css">
+
+<style>
+span.wikidatamap_note {   
+  border-right: 1px solid #DDD ;
+  margin-right: 0.2rem;
+}
+span.wikidatamap_note:last-of-type {
+  border-right: none;
+}
+
+</style>
+
+<template id='wikidatamap-template'>
+<div class='mb-1'>
+    <div v-if='loaded'>
+        <div class='wikidatamap_map' style='width:100%; height:300px'></div>
+        <div style="font-size:9pt;">
+            <span v-for="(source,source_id) in data.sources" v-if='(source.status||"")!=""' class="wikidatamap_note">
+                {{source.name}}:{{source.status}}
+            </span>
+            &nbsp;
+            <span v-for="(layer,layer_id) in data.layers" v-if='(layer.status||"")!=""' class="wikidatamap_note">
+                {{layer.name}}:{{layer.status}}
+            </span>
+        </div>
+    </div>
+    <div v-else>
+        <i tt='loading'></i>
+    </div>
+</div>
+</template>
+
+
+<script>
+'use strict';
+
+var widar ;
+
+
+// ********************************************************************************
+
+function MapSource () {
+    this.cache = {} ;
+    this.name = ''
+    this.status = '' ;
+}
+
+MapSource.prototype.load_all = function (callback) {
+    if(typeof callback=="function") callback();
+}
+
+MapSource.prototype.iterate_all = function* () {
+    let values = Object.values(this.cache);
+    for (let element of values) {
+        yield element ;
+    }
+}
+
+MapSource.prototype.getEntry = function (id) {
+    return this.cache[id] ;
+}
+
+
+MapSource.prototype.mapHasChanged = function (data,callback) {
+    callback(false);
+}
+
+// ********************************************************************************
+
+MapSourceMnM.prototype = new MapSource ;
+MapSourceMnM.prototype.constructor = MapSourceMnM ;
+function MapSourceMnM(catalog_id) {
+    let self = this ;
+    MapSource.call(self);
+    self.name = 'mnm'
+    self.api = 'https://mix-n-match.toolforge.org/api.php' ;
+    self.catalog_id = catalog_id ;
+    self.edit_mixin = $.extend(true, {}, editEntryMixin); // Deep clone
+    self.is_incomplete = false ;
+    $.get(self.api,{
+        query:'get_catalog_info',
+        catalog:self.catalog_id
+    } , function ( d ) {
+        self.catalog = d.data[0] ;
+    } , 'json' ) ;
+}
+MapSourceMnM.prototype.mapHasChanged = function (data,callback) {
+    callback(false); // TODO
+}
+MapSourceMnM.prototype.action_remove_match = function ( data , callback ) {
+    let self = this ;
+    let entry = data.entry.aux.entry ;
+    $.get ( api , {
+        query:'remove_q' ,
+        tusc_user:widar.getUserName() ,
+        entry:entry.id
+    } , function ( d ) {
+        if ( d.status != 'OK' ) {
+            alert ( d.status ) ;
+            return callback(false);
+        }
+        entry.q = null ;
+        entry.user = null ;
+        entry.username = null ;
+        entry.timestamp = null ;
+        // TODO use mnm_entry2map_entry
+        data.entry.aux.status = 'unmatched' ;
+        data.entry.desc = entry.ext_desc ;
+        data.entry.actions = [] ;
+        data.entry.actions.push({label:"Match to item",action:'match_to_item',type:'outline-primary'});
+        data.entry.actions.push({label:"Create new item",action:'create_new_item',type:'outline-success'});
+        callback(true);
+    } , 'json' ) ;
+}
+MapSourceMnM.prototype.action_confirm_match = function (data,callback) {
+    let q = "Q"+data.entry.aux.entry.q ;
+    this.set_match(data,q,callback);
+}
+MapSourceMnM.prototype.action_match_to_item = function (data,callback) {
+    let self = this ;
+    let q = prompt ( tt.t("enter_q_number") , data.last_clipboard_text ) ;
+    if ( q == null ) return callback(false) ; // Cancel
+    q = "Q"+q.replace(/\D/,'') ;
+    if ( q == "Q" ) return callback(false) ; // Not a Q
+    self.set_match(data,q,callback);
+}
+MapSourceMnM.prototype.set_match = function (data,q,callback) {
+    let self = this ;
+    let entry = data.entry.aux.entry ;
+    let value = entry.ext_id ;
+    let prop ;
+    if ( self.catalog.wd_prop!=null && self.catalog.wd_qual==null ) prop = 'P'+self.catalog.wd_prop ;
+    else {
+        prop = "P973" ; // Described at URL
+        value = entry.ext_url ;
+        if ( value==null || value=='' ) {
+            //alert ("Catalog has no property, and entry has no URL; can not set set this match on Wikidata")
+            //return callback(false);
+            data.entry.aux.status = 'fullmatch' ;
+            data.entry.desc = entry.ext_desc + "\nMatched to [["+q+"]]" ;
+            data.entry.actions = [] ;
+            data.entry.actions.push({label:"Remove match",action:'remove_match',type:'outline-danger'});
+            return self.edit_mixin.methods.setEntryQ ( entry , q , true , function(q){callback(true)} , function(){callback(false)} ) ;
+        }
+    }
+    let summary = 'Matched to [[:toollabs:mix-n-match/#/entry/' + entry.id + '|' + entry.ext_name + ' (#' + entry.id + ')]]' ;
+    let params = { botmode:1 , action:'set_string' , id:q , prop:prop , text:value , summary:summary } ;
+    widar.run ( params , function ( d ) {
+        if ( d.error != 'OK' ) {
+            alert ( d.error ) ;
+            return callback(false) ;
+        }
+        // TODO use mnm_entry2map_entry
+        data.entry.aux.status = 'fullmatch' ;
+        data.entry.desc = entry.ext_desc + "\nMatched to [["+q+"]]" ;
+        data.entry.actions = [] ;
+        data.entry.actions.push({label:"Remove match",action:'remove_match',type:'outline-danger'});
+        self.edit_mixin.methods.setEntryQ ( entry , q , true , function(q){callback(true)} , function(){callback(false)} ) ;
+    } ) ;
+}
+MapSourceMnM.prototype.action_create_new_item = function (data,callback) {
+    let self = this ;
+    let entry = self.cache[data.entry.id] ;
+    let entry_id = entry.aux.entry_id ;
+    $.get ( self.api , {
+        query:'prep_new_item',
+        entry_ids:''+entry_id
+    } , function ( d ) {
+        if ( d.status != 'OK' || typeof d.data == 'undefined' ) {
+            alert ( "Problem creating item: " + d.status ) ;
+            return callback();
+        }
+        let params = { 
+            action:'wbeditentity',
+            'new':'item',
+            data:d.data
+        } ;
+        let summary = 'New item based on [[:toollabs:mix-n-match/#/entry/' + entry_id + '|' + entry.aux.entry.ext_name + ' (#' + entry_id + ')]]' ;
+        params = {
+            action : 'generic' ,
+            summary : summary ,
+            json : JSON.stringify ( params )
+        }
+
+        widar.run ( params , function ( d ) {
+            if ( d.error != 'OK' ) {
+                alert ( d.error ) ;
+                return callback();
+            }
+            let q = d.res.entity.id.replace ( /\D/g , '' ) ;
+            if ( typeof q == 'undefined' || q == 0 || q === null ) {
+                alert ( "Missing/invalid QID")
+                return callback();
+            }
+            // TODO use mnm_entry2map_entry
+            entry.aux.status = 'fullmatch' ;
+            entry.desc = entry.aux.entry.ext_desc + "\nMatched to [[Q"+q+"]]" ;
+            entry.actions = [] ;
+            entry.actions.push({label:"Remove match",action:'remove_match',type:'outline-danger'});
+            self.edit_mixin.last_created_q = q ;
+            self.edit_mixin.methods.setEntryQ ( entry.aux.entry , q , true , function(q){callback(true)} , function(){callback(false)} ) ;
+        } ) ;
+
+    } , 'json' ) ;
+}
+MapSourceMnM.prototype.mnm_entry2map_entry = function (entry) {
+    let e = {
+        id:''+entry.id,
+        label:entry.ext_name,
+        desc:entry.ext_desc,
+        url:entry.ext_url,
+        url2:"https://mix-n-match.toolforge.org/#/entry/"+entry.id,
+        lat:entry.lat,
+        lon:entry.lon,
+        aux:{
+            entry_id:entry.id,
+            entry:entry
+        } ,
+        actions:[
+        ]
+    } ;
+    if ( entry.user==null ) {
+        e.aux.status = 'unmatched' ;
+        e.actions.push({label:"Match to item",action:'match_to_item',type:'outline-primary'});
+        e.actions.push({label:"Create new item",action:'create_new_item',type:'outline-success'});
+    } else if ( entry.user==0 ) {
+        e.aux.status = 'automatch' ;
+        e.aux.q = entry.q ;
+        e.desc += "\nPreliminarily matched to [[Q"+entry.q+"]]" ;
+        e.actions.push({label:"Confirm match",action:'confirm_match',type:'outline-primary'});
+        e.actions.push({label:"Remove match",action:'remove_match',type:'outline-danger'});
+        e.actions.push({label:"Create new item",action:'create_new_item',type:'outline-success'});
+    } else {
+        e.aux.status = 'fullmatch' ;
+        e.desc += "\nMatched to [[Q"+entry.q+"]]" ;
+        e.actions.push({label:"Remove match",action:'remove_match',type:'outline-danger'});
+    }
+    return e ;
+}
+MapSourceMnM.prototype.load_all = function (callback) {
+    let self = this ;
+    $.get ( self.api , {
+            query:'get_locations_in_catalog',
+            catalog:self.catalog_id
+    } , function ( d ) {
+        Vue.set(self,'status','loading');
+        $.each ( d.data , function ( dummy , entry ) {
+            let e = self.mnm_entry2map_entry(entry);
+            self.cache[e.id] = e ;
+        } ) ;
+        Vue.set(self,'status','');
+        if(typeof callback=="function") callback();
+    } , "json" ) ;
+}
+
+// ********************************************************************************
+
+MapSourceCommons.prototype = new MapSource ;
+MapSourceCommons.prototype.constructor = MapSourceCommons ;
+function MapSourceCommons(catalog_id) {
+    MapSource.call(this);
+    this.name = 'commons'
+    this.thumb_size = 200 ;
+    this.min_zoom = 10 ;
+    this.max_results = 500 ;
+    this.language = 'en' ;
+    this.last_center = {lat:0,lng:0} ;
+}
+/*
+MapSourceCommons.prototype.action_create_new_item = function (data,callback) {
+    let self = this ;
+    let filename = data.entry.id ;
+    let label = prompt ( "Create new Wikidata item" , filename.replace(/\.[^\.]+$/,'') ) ;
+    if ( label == null || label == '' ) return ;
+    let params = { 
+        action:'wbeditentity',
+        'new':'item',
+        data:{
+            labels:{en:[{language:"en",value:label}]},
+            claims:[
+                {
+                    mainsnak:{
+                        snaktype:'value',
+                        property:"P18",
+                        datavalue:{
+                            value:filename,
+                            type:'string'
+                        },
+                        datatype:'commonsMedia'
+                    },
+                    type:'statement',
+                    rank:'normal'
+                },
+                {
+                    mainsnak:{
+                        snaktype:'value',
+                        property:"P625",
+                        datavalue:{
+                            value:{
+                                latitude:data.entry.lat,
+                                longitude:data.entry.lon,
+                                //altitude: null,
+                                precision: 0.0000001,
+                                globe:'http://www.wikidata.org/entity/Q2'
+                            },
+                            type:'globecoordinate'
+                        },
+                        datatype:'globe-coordinate'
+                    },
+                    type:'statement',
+                    rank:'normal'
+                }
+            ]
+        }
+    } ;
+    console.log(params);
+    let summary = 'New item based on Commons file '+filename;
+    params = {
+        action : 'generic' ,
+        summary : summary ,
+        json : JSON.stringify ( params )
+    }
+
+    widar.run ( params , function ( d ) {
+        if ( d.error != 'OK' ) {
+            alert ( d.error ) ;
+            return callback();
+        }
+        let q = d.res.entity.id.replace ( /\D/g , '' ) ;
+        if ( typeof q == 'undefined' || q == 0 || q === null ) {
+            alert ( "Missing/invalid QID")
+            return callback();
+        }
+        console.log("Created new item "+q)
+    } , 'json' ) ;
+}
+*/
+MapSourceCommons.prototype.mapHasChanged = function (data,callback) {
+    let self = this ;
+    self.cache = {} ; // Cleanup
+    let center = data.bounds.getCenter() ;
+    if ( center.lat == self.last_center.lat && center.lng == self.last_center.lng ) return ;
+    self.last_center = center ;
+    if ( data.zoom<self.min_zoom ) {
+        Vue.set(self,'status','zoom in to view');
+        return callback(true);
+    }
+    let url = "https://commons.wikimedia.org/w/api.php?callback=?" ;
+    Vue.set(self,'status','loading');
+    let sw = data.bounds._southWest ;
+    let ne = data.bounds._northEast ;
+    let north = ne.lat ;
+    let south = sw.lat ;
+    let east = ne.lng ;
+    let west = sw.lng ;
+    let params = {
+        action:'query',
+        list:'geosearch',
+        gsbbox:north+'|'+west+'|'+south+'|'+east,
+        gsnamespace:6,
+        gslimit:self.max_results,
+        format:'json'
+    } ;
+    $.getJSON ( url , params , function ( d ) {
+        let entries_returned = 0 ;
+        if ( typeof d.query=='undefined') {
+            Vue.set(self,'status','error');
+            return callback(false);
+        }
+        $.each ( d.query.geosearch , function (num,result) {
+            let filename = result.title.replace(/^File:/,'') ;
+            let e = {
+                id:filename,
+                label:'',//filename.replace(/\.[^.]+$/,''),
+                desc:'',
+                lat:result.lat,
+                lon:result.lon,
+                url:'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(filename),
+                has_image:true,
+                copy2clipboard:filename,
+                image:{
+                    thumbnail_url:'https://commons.wikimedia.org/wiki/Special:Redirect/file/'+encodeURIComponent(filename)+'?width='+self.thumb_size+'px&height='+self.thumb_size+'px',
+                    page_url:'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(filename)
+                } ,
+                //actions:[{label:"Create new item",action:'create_new_item',type:'outline-success'}],
+                aux:{}
+            } ;
+            self.cache[e.id] = e ;
+            entries_returned += 1 ;
+        } ) ;
+        if ( entries_returned>=self.max_results ) Vue.set(self,'status','incomplete');
+        else Vue.set(self,'status','');
+        callback(true);
+    } ) ;
+}
+
+// ********************************************************************************
+
+MapSourceWikidata.prototype = new MapSource ;
+MapSourceWikidata.prototype.constructor = MapSourceWikidata ;
+function MapSourceWikidata(catalog_id) {
+    MapSource.call(this);
+    this.name = 'wikidata'
+    this.sparql_url = 'https://query.wikidata.org/bigdata/namespace/wdq/sparql' ;
+    this.sparql_limit = 5000 ;
+    this.thumb_size = 200 ;
+    this.min_zoom = 10 ;
+    this.language = 'en' ;
+}
+MapSourceWikidata.prototype.action_add_image = function (data,callback) {
+    // data is {layer,entry,entry_num}
+    let self = this ;
+    let file = prompt("Enter file name on Commons:",data.last_clipboard_text);
+    if ( file === null || file == '' ) return ;
+    let q = data.entry.id ;
+    let summary = 'Adding file '+file ;
+    let params = { botmode:1 , action:'set_string' , id:q , prop:"P18" , text:file , summary:summary } ;
+    widar.run ( params , function ( d ) {
+        if ( d.error != 'OK' ) {
+            alert ( d.error ) ;
+            return callback(false) ;
+        }
+        data.entry.image = {
+            thumbnail_url:'https://commons.wikimedia.org/wiki/Special:Redirect/file/'+encodeURIComponent(file)+'?width='+self.thumb_size+'px&height='+self.thumb_size+'px',
+            page_url:'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(file)
+        } ;
+        data.entry.has_image = true ;
+        callback(true);
+    } ) ;
+}
+MapSourceWikidata.prototype.mapHasChanged = function (data,callback) {
+    let self = this ;
+    self.cache = {} ; // Cleanup
+    if ( data.zoom<self.min_zoom ) {
+        Vue.set(self,'status','zoom in to view');
+        return callback(true);
+    }
+    let bounds = data.bounds ;
+    var sparql = "#TOOL: Mix'n'match\n" ;
+    sparql += 'SELECT ?q ?qLabel ?location ?image ?reason ?desc ?commonscat ?street WHERE { ' ;
+    sparql += ' SERVICE wikibase:box { ?q wdt:P625 ?location . ' ;
+    sparql += 'bd:serviceParam wikibase:cornerSouthWest "Point('+bounds._southWest.lng+' '+bounds._southWest.lat+')"^^geo:wktLiteral . ' ;
+    sparql += 'bd:serviceParam wikibase:cornerNorthEast "Point('+bounds._northEast.lng+' '+bounds._northEast.lat+')"^^geo:wktLiteral }' ;
+    sparql += ' OPTIONAL { ?q wdt:P18 ?image } ' ;
+    sparql += ' OPTIONAL { ?q wdt:P373 ?commonscat } ' ;
+    sparql += ' OPTIONAL { ?q wdt:P969 ?street } ' ;
+    sparql += ' SERVICE wikibase:label { bd:serviceParam wikibase:language "'+self.language+',en,de,fr,es,it,nl,el" . ?q schema:description ?desc . ?q rdfs:label ?qLabel } ' ;
+    sparql += ' } LIMIT '+self.sparql_limit ;
+    Vue.set(self,'status','loading');
+    $.getJSON ( self.sparql_url , {
+        query:sparql
+    } , function ( d ) {
+            if ( typeof d == 'undefined' || typeof d.results == 'undefined' || typeof d.results.bindings == 'undefined' ) return callback(false);
+            let entries_returned = 0 ;
+            $.each ( d.results.bindings , function ( dummy , item ) {
+                entries_returned += 1 ;
+                if ( item.q.type != 'uri' ) return ;
+                let q = item.q.value.replace ( /^.+\// , '' ) ;
+                let e = {
+                    id:q,
+                    label:q,
+                    desc:'',
+                    url:'https://www.wikidata.org/wiki/'+q,
+                    copy2clipboard:q,
+                    has_image:false,
+                    actions:[],
+                    aux:{
+                    }
+                } ;
+                if ( typeof item.location != 'undefined' && item.location.type == 'literal' && item.location.datatype == "http://www.opengis.net/ont/geosparql#wktLiteral" ) {
+                    var m = item.location.value.match ( /^Point\((.+?)\s(.+?)\)$/ ) ;
+                    if ( m == null ) return ;
+                    e.lat = m[2]*1 ;
+                    e.lon = m[1]*1 ;
+                } else return ;
+                if ( typeof item.qLabel != 'undefined' && item.qLabel.type == 'literal' ) e.label = item.qLabel.value ;
+                if ( typeof item.desc != 'undefined' && item.desc.type == 'literal' ) e.desc = item.desc.value ;
+                if ( typeof item.image != 'undefined' ) {
+                    if ( item.image.type == 'uri' ) {
+                        let image_name = decodeURIComponent ( item.image.value.replace(/^.+\//,'') ) ;
+                        e.image = {
+                            thumbnail_url:'https://commons.wikimedia.org/wiki/Special:Redirect/file/'+encodeURIComponent(image_name)+'?width='+self.thumb_size+'px&height='+self.thumb_size+'px',
+                            page_url:'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(image_name)
+                        } ;
+                        e.has_image = true ;
+                    }
+                }
+                if ( !e.has_image ) {
+                    e.actions.push({label:"Add image",action:'add_image',type:'outline-success'});
+                    // ,commons_icon:'PICOL icon Image add.svg'
+                }
+                self.cache[e.id] = e ;
+            } ) ;
+            if ( entries_returned>=self.sparql_limit ) Vue.set(self,'status','incomplete');
+            else Vue.set(self,'status',''); ;
+            callback(true);
+    } ) ;
+}
+
+
+// ********************************************************************************
+
+MapSourceFlickr.prototype = new MapSource ;
+MapSourceFlickr.prototype.constructor = MapSourceFlickr ;
+function MapSourceFlickr(flickr_api_key) {
+    if ( typeof flickr_api_key == 'undefined' ) console.log("FLICKR KEY REQUIRED FOR MapSourceFlickr BUT NOT GIVEN");
+    MapSource.call(this);
+    this.name = 'flickr'
+    this.min_zoom = 10 ;
+    this.max_results = 250 ;
+    this.flickr_api_key = flickr_api_key ;
+    this.last_center = {lat:0, lon:0} ;
+}
+MapSourceFlickr.prototype.stripHtml = function(html) {
+  let temporalDivEl = document.createElement("div");
+  temporalDivEl.innerHTML = html;
+  return temporalDivEl.textContent || temporalDivEl.innerText || "";
+}
+MapSourceFlickr.prototype.action_upload2commons = function (data,callback) {
+    let self = this ;
+    let url = "https://flickr2commons.toolforge.org/#/photo/"+data.entry.id ;
+    window.open(url, '_blank');
+}
+MapSourceFlickr.prototype.mapHasChanged = function (data,callback) {
+    let self = this ;
+    self.cache = {} ; // Cleanup
+    let center = data.bounds.getCenter() ;
+    if ( center.lat == self.last_center.lat && center.lng == self.last_center.lng ) return ;
+    self.last_center = center ;
+    if ( data.zoom<self.min_zoom ) {
+        Vue.set(self,'status','zoom in to view');
+        return callback(true);
+    }
+
+    let params = {
+        method:'flickr.photos.search',
+        api_key:self.flickr_api_key,
+        license:'4,5,7,8,9,10',
+        sort:'interestingness-desc',
+        bbox:data.bounds.toBBoxString(),
+        nojsoncallback:1,
+        per_page:self.max_results,
+        extras:'description,geo,url_s,url_o,url_l,url_m',
+        format:'json'
+    } ;
+
+    Vue.set(self,'status','loading');
+    $.get ( 'https://api.flickr.com/services/rest/' , params , function ( d ) {
+        $.each ( d.photos.photo , function ( k , v ) {
+            let page_url = 'https://www.flickr.com/photos/'+v.owner+'/'+v.id ;
+            let e = {
+                id:v.id,
+                label:v.title,
+                desc:self.stripHtml(v.description['_content']).substring(0,150),
+                url:page_url,
+                //copy2clipboard:q,
+                has_image:true,
+                lat:v.latitude,
+                lon:v.longitude,
+                actions:[],
+                image :{
+                    thumbnail_url:v.url_s,
+                    page_url:page_url
+                },
+                actions:[
+                    {label:"Upload to Commons",action:'upload2commons',type:'outline-success'}
+                ],
+                aux:{}
+            } ;
+            self.cache[e.id] = e ;
+        } ) ;
+        Vue.set(self,'status','');
+        callback(true);
+    } , 'json' ) ;
+}
+
+
+// ********************************************************************************
+
+Vue.component ( 'wikidata-map' , {
+    props : ['mapdata','entry'] ,
+    data : function () { return { loaded:false , data:{} , map:{} , entry_focus:{} , last_clipboard_text:'' } } ,
+    created : function () {
+        let self = this ;
+        self.loadLeaflet(function(){
+            self.data = self.mapdata ;
+            self.createFromData() ;
+            self.entry_focus = self.entry ;
+            self.focusOnEntry(self.entry_focus);
+            self.loaded = true ;
+        })
+    },
+    updated : function () {
+        tt.updateInterface(this.$el)
+    } ,
+    mounted : function () { tt.updateInterface(this.$el) } ,
+    watch : {
+        "entry" : function ( val , oldVal ) {
+            let self = this ;
+            self.entry_focus = val ;
+            self.focusOnEntry(self.entry_focus);
+        }
+    } ,
+    methods : {
+        focusOnEntry : function ( entry ) {
+            let self = this ;
+            if ( typeof self.map.fitBounds=='undefined' ) {
+                setTimeout(function(){self.focusOnEntry(entry)},500);
+                return;
+            }
+            if ( typeof self.data.sources[entry.source] == 'undefined' ) return ;
+            let source_entry = self.data.sources[entry.source].getEntry(entry.id) ;
+            if ( typeof source_entry == 'undefined' ) return ;
+            let markerBounds = L.latLngBounds([L.latLng(source_entry.lat, source_entry.lon)]);
+            self.map.fitBounds(markerBounds);
+        } ,
+        escapeHTML : function (str){
+            if ( typeof str == 'undefined' ) return "" ;
+            return new Option(""+str).innerHTML;
+        } ,
+        isLeafletLoaded : function (callback) {
+            if ( typeof L == 'undefined' ) {
+                let self = this ;
+                setTimeout ( function(){self.isLeafletLoaded(callback)} , 200 ) ;
+                return ;
+            }
+            callback();
+        } ,
+        loadLeaflet : function (callback) {
+            if ( typeof L == 'undefined' ) {
+                const script = document.createElement('script');
+                script.src = 'https://tools-static.wmflabs.org/cdnjs/ajax/libs/leaflet/1.7.1/leaflet.min.js';
+                document.head.append(script);
+            }
+            this.isLeafletLoaded(callback);
+        } ,
+        updateLayers : function (ev) {
+            let self = this ;
+            let bounds = self.map.getBounds() ;
+            let zoom = self.map.getZoom();
+            $.each ( self.data.sources , function ( source , ds ) {
+                ds.mapHasChanged({bounds:bounds,zoom:zoom},function(source_has_changed){
+                    if ( !source_has_changed ) return ;
+                    self.updateSourceLayers(source);
+                });
+            } ) ;
+        } ,
+        updateSourceLayers : function ( source ) {
+            let self = this ;
+            let ds = self.data.sources[source] ;
+            $.each ( self.data.layers , function ( layer_num , layer ) {
+                if ( layer.source != source ) return ;
+                self.refillLayer(layer);
+            } ) ;
+        } ,
+        refillLayer : function ( layer ) {
+            let self = this ;
+            //console.log(JSON.parse(JSON.stringify(layer)));
+            layer.entries = [] ;
+            let source = self.data.sources[layer.source] ;
+            let it = source.iterate_all();
+            if ( typeof layer.filter_entry!='function' ) layer.filter_entry = function () { return true } ;
+            for (const entry of it) {
+                if ( layer.filter_entry ( entry ) ) layer.entries.push ( entry ) ;
+            };
+            return self.addMarkersForLayer ( layer ) ;
+        } ,
+        addMarkersForLayer : function ( layer ) {
+            let self = this ;
+            if ( typeof layer.markers != 'undefined' ) {
+                layer.map_layer.removeLayer ( layer.markers ) ;
+                delete layer.markers ;
+            }
+
+            if ( typeof layer.entries=='undefiend' ) return ;
+            let added = 0 ;
+            let markers = new L.FeatureGroup();
+            layer.status = '' ;
+            layer.markers = markers ;
+            layer.map_layer.addLayer(markers);
+            $.each ( layer.entries , function ( entry_num , entry ) {
+                let title;
+                let after_title = '' ;
+                if ( typeof entry.label=='undefined' || entry.label=='' ) {
+                    title = "<i>"+self.escapeHTML(entry.id)+"</i>" ;
+                    if ( typeof entry.url2!='undefined' && entry.url2!='' ) after_title = " <small>[<a target='_blank' href='"+entry.url2+"'>url</a>]</small>" ;
+                } else {
+                    title = "<b>"+self.escapeHTML(entry.label)+"</b>" ;
+                    if ( typeof entry.url2!='undefined' && entry.url2!='' ) after_title = " <small>[<a target='_blank' href='"+entry.url2+"'>"+self.escapeHTML(entry.id)+"</a>]</small>" ;
+                    else after_title = " <small>["+self.escapeHTML(entry.id)+"]</small>" ;
+                }
+                if ( typeof entry.url!='undefined' && entry.url!='' ) title = "<a target='_blank' href='"+entry.url+"'>"+title+"</a>" ;
+                title += after_title ;
+                if ( typeof entry.copy2clipboard!='undefined' && entry.copy2clipboard!='' ) {
+                    let span = '<span class="popup-copy" style="cursor: pointer" text="'+self.escapeHTML(entry.copy2clipboard)+'">📋</span>' ;
+                    title += span ;
+                }
+
+                let desc = self.escapeHTML(entry.desc) ;
+                desc = desc.replace(/\[\[(Q\d+)\]\]/,'<a target="_blank" class="wikidata" href="https://www.wikidata.org/wiki/$1">$1</a>') ;
+
+                let text = '' ;
+                text += "<h6>"+layer.name+"</h6>" ;
+                text += "<div>"+title+"</div>" ;
+                text += "<div>" + desc + "</div>" ;
+                text += "<div><tt>" + self.escapeHTML(entry.lat) + "/" + self.escapeHTML(entry.lon) + "</tt></div>" ;
+
+                if ( typeof entry.image != "undefined" ) {
+                    let image = "<img src='"+entry.image.thumbnail_url+"' style='max-width:100%' />" ;
+                    text += "<div style='text-align:center'>"+image+"</div>" ;
+                    text = "<div style='width:200px'>"+text+"</div>" ; // Set initial container size
+                }
+                
+                if ( typeof entry.actions != "undefined" && entry.actions.length>0 ) {
+                    text += "<div style='display:flex;flex-wrap:wrap;'>" ;
+                    $.each ( entry.actions , function ( action_id , action ) {
+                        let button_label = self.escapeHTML(action.label) ;
+                        if ( typeof action.commons_icon != 'undefined' ) {
+                            let icon_size = '32px';
+                            let icon_url = 'https://commons.wikimedia.org/wiki/Special:Redirect/file/'+encodeURIComponent(action.commons_icon)+'?width='+icon_size+'&height='+icon_size;
+                            button_label = "<img src='"+icon_url+"' style='width:"+icon_size+"px'/>";
+                            console.log(button_label)
+                        }
+                        let button = '<button type="button" class="btn btn-sm btn-'+(action.type||"outline-dark")+' popup-button" action="'+action.action+'">'+button_label+'</button>' ;
+                        let container = "<div class='mr-1 mb-1'>"+button+"</div>" ;
+                        text += container ;
+                    } ) ;
+                    text += "</div>" ;
+                }
+
+                let options = {radius:(layer.radius||10),weight:(layer.weight||1),color:layer.color} ;
+                let marker = L.circleMarker({lat:entry.lat,lon:entry.lon},options)
+                .bindPopup(text)
+                .on("popupopen",function(ev){self.openMarker(ev,layer,entry,entry_num)})
+                //.on("dblclick",function(ev){self.zoomOnMarker(ev,layer,entry,entry_num)})
+                .addTo(markers) ;
+                entry.marker = marker ;
+                added += 1 ;
+                /*
+                // TODO filter first for current bounds
+                if ( typeof layer.max!='undefined' && added >= layer.max ) {
+                    layer.status = 'incomplete' ;
+                    return false ;
+                }
+                */
+            } ) ;
+
+            return markers.getBounds() ;
+        } ,
+        zoomOnMarker : function ( ev , layer , entry , entry_num ) { // DOES NOT WORK??
+            let self = this ;
+            self.$emit('double-click-marker',{layer,entry,entry_num}) ;
+        } ,
+        copyStringToClipboard : function (str) {
+           var el = document.createElement('textarea');
+           el.value = str;
+           el.setAttribute('readonly', '');
+           el.style = {position: 'absolute', left: '-9999px'};
+           document.body.appendChild(el);
+           el.select();
+           document.execCommand('copy');
+           document.body.removeChild(el);
+        } ,
+        openMarker : function ( ev , layer , entry , entry_num ) {
+            let self = this ;
+            let popup = $(ev.popup._container) ;
+            popup.find('span.popup-copy').each(function(k,s_orig){
+                let s = $(s_orig);
+                let text = s.attr('text') ;
+                s.click(function(){
+                    self.last_clipboard_text = text ;
+                    self.copyStringToClipboard(text);
+                    s.html("<span style='color:green'>✓</span>");
+                });
+            });
+            popup.find('button.popup-button').each(function(k,button_orig){
+                let button = $(button_orig) ;
+                let action = button.attr('action') ;
+                button.click(function(){self.handle_action(action,layer,entry,entry_num)});
+            });
+            self.$emit('open-marker',{layer,entry}) ;
+        } ,
+        handle_action : function (action,layer,entry,entry_num) {
+            let self = this ;
+            let source = self.data.sources[layer.source] ;
+            let fn_name = "action_"+action ;
+            let last_clipboard_text = self.last_clipboard_text ;
+            if ( typeof source[fn_name] == 'function' ) {
+                source[fn_name]({layer,entry,entry_num,last_clipboard_text},function(do_update){
+                    if ( do_update ) self.updateSourceLayers(layer.source) ;
+                });
+            } else {
+                console.log ( "Source "+layer.source+" has no function "+fn_name);
+                alert ( "Not implemented yet" ) ;
+            }
+        } ,
+        createFromData : function () {
+            let self = this ;
+            let map_element = $(self.$el).find("div.wikidatamap_map");
+            if ( map_element.length == 0 ) {
+                setTimeout ( self.createFromData , 100 ) ;
+                return ;
+            }
+            map_element = map_element.get(0) ;
+            let container_height = $(self.$el).height() ;
+            $(map_element).height(container_height);
+
+            self.map = L.map(map_element, {drawControl: false});
+
+            L.tileLayer('https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png', { attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'}).addTo(self.map);
+
+            let bounds ;
+            self.map_layers = [] ;
+            $.each ( self.data.layers , function ( layer_num , layer ) {
+                let fg = L.featureGroup() ;
+                let name = "<div style='display:inline-block;background-color:"+layer.color+";border:1px solid "+layer.color+";width:12px;height:12px;padding-top:3px;padding-right:3px;opacity:1.0;'></div> " + layer.name ;
+                self.map_layers[name] = fg ;
+                layer.map_layer = fg ;
+                let layer_bounds = self.refillLayer ( layer ) ;
+                if ( typeof bounds=='undefined' ) bounds = layer_bounds ;
+                else bounds.extend(layer_bounds) ;
+                if ( layer.visible_from_start ) fg.addTo(self.map);
+            } ) ;
+            self.layer_control = L.control.layers(null, self.map_layers).addTo(self.map);
+            self.map.fitBounds(bounds); // .pad(0.005)
+            self.updateLayers();
+            self.map.on('moveend',self.updateLayers);
+            self.map.on('viewreset',self.updateLayers);
+        }
+    } ,
+    template:'#wikidatamap-template'
+} ) ;
+</script>
