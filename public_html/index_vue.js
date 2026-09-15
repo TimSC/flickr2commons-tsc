@@ -1,5 +1,6 @@
 // INITIALIZE
-if (location.protocol != 'https:') location.href = 'https:' + window.location.href.substring(window.location.protocol.length); // ENFORCE HTTPS
+var is_localhost = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) ;
+if (location.protocol != 'https:' && !is_localhost) location.href = 'https:' + window.location.href.substring(window.location.protocol.length); // ENFORCE HTTPS
 else if ( /^[^#]+\?/.test(window.location.href) ) {  // AUTO-FORWARD BASED ON OLD VERSION PARAMETERS
 
 function getUrlVars () {

@@ -113,7 +113,7 @@ class MW_OAuth {
 	
 	// Load the user token (request or access) from the session
 	function loadToken() {
-        if ('dev' === getenv('APP_ENV')) {
+        if ('dev' === getenv('APP_ENV') && !isset( $_GET['oauth_verifier'] )) {
             $this->gTokenKey = getenv('MW_ACCESS_TOKEN');
             $this->gTokenSecret = getenv('MW_ACCESS_SECRET');
 

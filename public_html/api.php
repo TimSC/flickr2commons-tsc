@@ -89,8 +89,11 @@ error_reporting(E_ALL);
 
 	require_once 'php/Widar.php' ;
 	$widar = new \Widar ( 'flickr2commons-ng' ) ;
-	$widar->attempt_verification_auto_forward ( 'https://flickr2commons-ng.toolforge.org/' ) ;
-	$widar->authorization_callback = 'https://flickr2commons-ng.toolforge.org/api.php' ;
+	$host = $_SERVER['HTTP_HOST'] ?? 'flickr2commons-ng.toolforge.org' ;
+	$is_localhost = preg_match ( '/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/' , $host ) ;
+	$base_url = $is_localhost ? "http://$host/" : 'https://flickr2commons-ng.toolforge.org/' ;
+	$widar->attempt_verification_auto_forward ( $base_url ) ;
+	if ( !$is_localhost ) $widar->authorization_callback = $base_url . 'api.php' ;
 	if ( $widar->render_reponse ( true ) ) exit ( 0 ) ;
 	$out['status'] = "Unknown action '{$action}'" ;
 }

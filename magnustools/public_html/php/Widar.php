@@ -20,15 +20,16 @@ class Widar {
 	public $result = '' ;
 	public $authorization_callback = '' ;
 	public $authorize_parameters = '' ; # Optional parameters to 'authorize' call
+	public $oauth_error = '' ;
 
 	public function __construct ( /*string*/ $toolname = '' ) {
 		$this->tfc = new ToolforgeCommon ( $toolname ) ;
 		try {
 			$this->oa = new MW_OAuth ( $this->toolname() , 'wikidata' , 'wikidata' ) ;
 		} catch ( Exception $e ) { # Error
-			// Ignore error
+			$this->oauth_error = $e->getMessage() ;
 		}
-		$this->oa->debugging = true ;
+		if ( isset ( $this->oa ) ) $this->oa->debugging = true ;
 	}
 
 	public function toolname() {
@@ -236,6 +237,7 @@ class Widar {
 		$callback = $this->tfc->getRequest('callback2','') ; # For botmode
 
 		try {
+			if ( !isset ( $this->oa ) ) throw new Exception ( $this->oauth_error ) ;
 			$ret = $this->process_request ( $parameter_name ) ;
 		} catch ( Exception $e ) { # Error
 			$error_message = $e->getMessage() ;
