@@ -11,6 +11,8 @@ var flickr2commons = {
 	licenses : {
 		'4' : 'Attribution License' ,
 		'5' : 'Attribution-ShareAlike License' ,
+		'11' : 'Attribution 4.0 International' ,
+		'12' : 'Attribution-ShareAlike 4.0 International' ,
 //		'7' : 'No known copyright restrictions' ,
 		'8' : 'United States Government Work' ,
 		'9' : 'Cc-zero' ,
