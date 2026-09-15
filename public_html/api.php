@@ -6,6 +6,12 @@ $action = get_request ( 'action' , '' ) ;
 
 $out = ['status'=>'OK'] ;
 
+function duplicate_checks_enabled () {
+	$value = getenv ( 'F2C_ENABLE_DUPLICATE_CHECKS' ) ;
+	if ( $value === false || trim ( $value ) == '' ) return true ;
+	return !preg_match ( '/^(0|false|no|off)$/i' , trim ( $value ) ) ;
+}
+
 function urlPathBatchGenerator ( $data , $batch_size = 5000 ) {
 	global $db ;
 	$paths = [] ;
@@ -42,25 +48,29 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 	$data = json_decode ( get_request ( 'data' , '{}' ) ) ;
-	$db = openDB ( 'commons' , 'wikimedia' ) ;
 	$out['data']['files'] = [] ;
+	if ( !duplicate_checks_enabled() ) {
+		$out['warning'] = 'Commons duplicate checks disabled by F2C_ENABLE_DUPLICATE_CHECKS' ;
+	} else {
+		$db = openDB ( 'commons' , 'wikimedia' ) ;
 
-	$domains = [];
-	foreach ( ['http','https'] AS $protocol ) {
-		foreach ( ['','www.'] AS $subdomain ) {
-			$domains[] = $db->real_escape_string ( "$protocol://com.flickr.$subdomain" ) ;
+		$domains = [];
+		foreach ( ['http','https'] AS $protocol ) {
+			foreach ( ['','www.'] AS $subdomain ) {
+				$domains[] = $db->real_escape_string ( "$protocol://com.flickr.$subdomain" ) ;
+			}
 		}
-	}
 
-	foreach ( urlPathBatchGenerator($data) AS $paths ) {
-		$sql = "SELECT DISTINCT page_title,el_to_path FROM page,externallinks WHERE page_id=el_from AND page_namespace=6 AND el_to_domain_index IN ('" . implode("','", $domains) . "') AND el_to_path IN ('" . implode("','", $paths) . "')" ;
+		foreach ( urlPathBatchGenerator($data) AS $paths ) {
+			$sql = "SELECT DISTINCT page_title,el_to_path FROM page,externallinks WHERE page_id=el_from AND page_namespace=6 AND el_to_domain_index IN ('" . implode("','", $domains) . "') AND el_to_path IN ('" . implode("','", $paths) . "')" ;
 
-		$result = getSQL ( $db , $sql ) ;
-		while($o = $result->fetch_object()) {
-			if ( !preg_match ( '/\/(\d+)\/{0,1}$/' , $o->el_to_path , $m ) ) continue ; // Huh?
-			$out['data']['files'][$m[1]] = $o->page_title ;
+			$result = getSQL ( $db , $sql ) ;
+			while($o = $result->fetch_object()) {
+				if ( !preg_match ( '/\/(\d+)\/{0,1}$/' , $o->el_to_path , $m ) ) continue ; // Huh?
+				$out['data']['files'][$m[1]] = $o->page_title ;
+			}
+			#$out['sql'][] = $sql ; # Debugging output
 		}
-		#$out['sql'][] = $sql ; # Debugging output
 	}
 
 } else if ( $action == 'get_flickr_key' ) {
@@ -70,19 +80,25 @@ error_reporting(E_ALL);
 } else if ( $action == 'check_existing_commons_filenames' ) {
 
 	$filenames = json_decode ( get_request ( 'filenames' , '[]' ) ) ; // No "File:" prefix!
+	if ( !is_array ( $filenames ) ) $filenames = [] ;
 	$out['data']['files'] = [] ;
-	$db = openDB ( 'commons' , 'wikimedia' ) ;
 	$to_check = [] ;
 	foreach ( $filenames AS $fn ) {
 		$fn = str_replace ( ' ' , '_' , ucfirst ( trim ( $fn ) ) ) ;
-		$to_check[] = $db->real_escape_string ( $fn ) ;
+		$to_check[] = $fn ;
 		$out['data']['files'][$fn] = 0 ;
 	}
-	$sql = "SELECT DISTINCT page_title FROM page WHERE page_namespace=6 AND page_title IN ('" . implode("','",$to_check) . "')" ;
-	$out['sql'] = $sql ;
-	$result = getSQL ( $db , $sql ) ;
-	while($o = $result->fetch_object()) {
-		$out['data']['files'][$o->page_title] = 1 ;
+	if ( !duplicate_checks_enabled() ) {
+		$out['warning'] = 'Commons duplicate checks disabled by F2C_ENABLE_DUPLICATE_CHECKS' ;
+	} else {
+		$db = openDB ( 'commons' , 'wikimedia' ) ;
+		$to_check = array_map ( function ( $fn ) use ( $db ) { return $db->real_escape_string ( $fn ) ; } , $to_check ) ;
+		$sql = "SELECT DISTINCT page_title FROM page WHERE page_namespace=6 AND page_title IN ('" . implode("','",$to_check) . "')" ;
+		$out['sql'] = $sql ;
+		$result = getSQL ( $db , $sql ) ;
+		while($o = $result->fetch_object()) {
+			$out['data']['files'][$o->page_title] = 1 ;
+		}
 	}
 
 } else {
