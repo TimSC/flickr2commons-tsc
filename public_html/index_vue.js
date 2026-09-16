@@ -135,8 +135,8 @@ Vue.component ( 'flickr-file' , {
 var MainPage = Vue.extend ( {
 	props : [ '_user' , '_photoset' , '_group' , '_photo' , '_url' ] ,
 	data : function () { return { is_authorized:false , checking_auth:false , last_error:'' , url:'' , last_message:'' , running:false , files:[] , has_run:false , tags:{} ,
-		which_files:'all' , selected_tag:'' , prefix_string:'' , add2every_desc:'' , append_everywhere:'' , no_auto_desc:false , hide_files_on_commons:true ,
-		user:'' , photoset:'' , group:'' , photo:'' , tag:'' , max_pictures:'' , owners:{} , on_commons:0 , currently_selected:0 , filename_exists_on_commons:0 , transfers_running:0 , stop_transfers:false , form_is_visible:true , parsed_user_url:''
+		which_files:'all' , selected_tag:'' , prefix_string:'' , add2every_desc:'' , append_everywhere:'' , insert_before_license:'' , no_auto_desc:false , hide_files_on_commons:true ,
+		user:'' , photoset:'' , group:'' , photo:'' , tag:'' , max_pictures:'' , owners:{} , on_commons:0 , currently_selected:0 , filename_exists_on_commons:0 , transfers_running:0 , stop_transfers:false , form_is_visible:true , parsed_user_url:'' , flickr_key_override:''
 	} } ,
 	created : function () {
 		var me = this ;
@@ -492,6 +492,7 @@ var MainPage = Vue.extend ( {
 				return ;
 			}
 			if ( !me.is_authorized ) return me.logError ( "Not authorized" ) ;
+			flickr2commons.flickr_api_key = $.trim(me.flickr_key_override) || flickr2commons.default_flickr_api_key ;
 			if ( me.url != '' ) me.parseURL() ;
 			me.last_message = 'Running...' ;
 			me.running = true ;
@@ -515,6 +516,17 @@ var MainPage = Vue.extend ( {
 		stopTransfers : function () {
 			var me = this ;
 			me.stop_transfers = true ;
+			setTimeout ( function () {
+				if ( !me.stop_transfers ) return ; // Stopped cleanly already
+				// transferAll's polling loop never came back (e.g. a hung request) - force a reset so the UI doesn't stay stuck
+				console.error ( 'Stop did not complete in time, forcing reset of stuck transfers' ) ;
+				$.each ( me.files , function ( k , file ) {
+					if ( file.f2c_status == 'TRANSFER' ) file.f2c_status = 'ERROR' ;
+				} ) ;
+				me.transfers_running = 0 ;
+				me.stop_transfers = false ;
+				$("div.flickr-file :input").attr("disabled", false);
+			} , 3000 ) ;
 		} ,
 		transferAll : function () {
 			var me = this ;
@@ -577,14 +589,20 @@ var MainPage = Vue.extend ( {
 			if ( categories.join('') != '' ) o.auto_categories = false ;
 			else o.auto_categories = file_node.find('input.auto_categories').is(':checked') ;
 
+			o.insert_before_license = me.insert_before_license ;
+
 			file.f2c_status = 'TRANSFER' ;
 			flickr2commons.generateInformationTemplate ( o , function ( o ) {
 				// Check for error
 				if ( o.error!='' ) {
-					me.transfers_running-- ;
+					if ( me.transfers_running > 0 ) me.transfers_running-- ;
 					file.f2c_status = 'ERROR' ;
 					file_node.find('div.info_message').text(o.error) ;
 					console.error ( 'generateInformationTemplate failed for', o.photo.id, ':', o.error ) ;
+					Vue.nextTick ( function () { // Checkbox is re-created by v-if; wait for it before unchecking
+						$('#file_cb_'+o.photo.id).prop('checked', false) ;
+						me.updateCurrentlySelected() ;
+					} ) ;
 					setTimeout ( function(){me.transferAll()} , 10 ) ; // Start next one
 					return ;
 				}
@@ -598,7 +616,7 @@ var MainPage = Vue.extend ( {
 				if ( $.trim(me.append_everywhere)!='' ) o.information_template = $.trim(o.information_template+"\n"+$.trim(me.append_everywhere)) ;
 
 				flickr2commons.uploadFileToCommons ( o , function ( o ) {
-					me.transfers_running-- ;
+					if ( me.transfers_running > 0 ) me.transfers_running-- ;
 					if ( o.error=='' ) {
 						file.f2c_status = 'DONE' ;
 						file.existing_filename_on_commons = o.filename_on_commons ;
@@ -606,6 +624,10 @@ var MainPage = Vue.extend ( {
 						file.f2c_status = 'ERROR' ;
 						file_node.find('div.info_message').text(o.error) ;
 						console.error ( 'Transfer failed for', o.filename_on_commons, ':', o.error ) ;
+						Vue.nextTick ( function () { // Checkbox is re-created by v-if; wait for it before unchecking
+							$('#file_cb_'+o.photo.id).prop('checked', false) ;
+							me.updateCurrentlySelected() ;
+						} ) ;
 					}
 
 					// Logging
@@ -685,6 +707,7 @@ $(document).ready ( function () {
 			flickr2commons.default_max_photos = 500 ;
 			flickr2commons.enable_upload_logging = false ;
 		}
+		flickr2commons.default_flickr_api_key = flickr2commons.flickr_api_key ;
 		fin() ;
 	} , 'json' ) ;
 } ) ;

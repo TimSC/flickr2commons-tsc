@@ -560,7 +560,7 @@ class Widar {
 			if ( $this->authorize_parameters != '' ) $url .= "&{$this->authorize_parameters} " ;
 			throw new Exception ( 'You haven\'t authorized this application yet! Go <a target="_blank" href="' . htmlspecialchars( $url ) . '">here</a> to do that, then reload this page.' ) ;
 		}
-		if ( !isset( $res->query->userinfo ) ) throw new Exception ( 'Bad API response[1]: <pre>' . htmlspecialchars( var_export( $res, 1 ) ) . '</pre>' ) ;
+		if ( !isset( $res->query->userinfo ) ) throw new Exception ( 'Bad API response[1]: <pre>' . htmlspecialchars( var_export( $res, 1 ) ) . '</pre> ' . htmlspecialchars( $this->oa->error ?? '' ) ) ;
 		if ( isset( $res->query->userinfo->anon ) ) throw new Exception ( 'Not logged in. (How did that happen?)' ) ;
 	}
 }

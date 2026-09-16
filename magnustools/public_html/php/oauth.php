@@ -514,10 +514,20 @@ class MW_OAuth {
 			print "<hr/>" ;
 		}
 
-		if ( !$data ) return ;
+		if ( !$data ) {
+			$this->error = 'curl error talking to the API: ' . curl_error( $ch ) ;
+			$ch = null ;
+			sleep ( 10 ) ;
+			return $this->doApiQuery( $post , $ch , $mode , $iterations_left-1 , $last_maxlag ) ;
+		}
 		$ret = json_decode( $data );
-		if ( $ret == null ) return ;
-		
+		if ( $ret == null ) {
+			$this->error = 'Invalid JSON from the API: ' . substr( $data , 0 , 500 ) ;
+			$ch = null ;
+			sleep ( 10 ) ;
+			return $this->doApiQuery( $post , $ch , $mode , $iterations_left-1 , $last_maxlag ) ;
+		}
+
 		# maxlag
 		if ( isset($ret->error) and isset($ret->error->code) and $ret->error->code == 'maxlag' ) {
 			$lag = $maxlag * 1 ;

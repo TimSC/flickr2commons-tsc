@@ -5,6 +5,7 @@ var flickr2commons = {
 	oauth_uploader_api : 'https://tools.wmflabs.org/magnustools/oauth_uploader.php?botmode=1&callback=?' ,
 	flickr_api_url : 'https://flickr.com/services/rest' ,
 	flickr_api_key : '' ,
+	default_flickr_api_key : '' ,
 	default_max_photos : 500 ,
 	enable_upload_logging : false ,
 	is_authorized : false ,
@@ -320,7 +321,9 @@ var flickr2commons = {
 			if ( undefined !== d.wiki.geolocation && undefined !== d.wiki.geolocation.latitude ) {
 				w += "{{Location dec|" + d.wiki.geolocation.latitude + "|" + d.wiki.geolocation.longitude + "|source:" + d.wiki.geolocation.source + "}}\n" ;
 			}
-			
+
+			if ( $.trim(o.insert_before_license||'') != '' ) w += $.trim(o.insert_before_license) + "\n" ;
+
 			w += "\n=={{int:license-header}}==\n" ;
 			$.each ( ( d.wiki.licenses || [] ) , function ( k , v ) {
 				w += "{{" + v + "}}\n" ;
@@ -337,8 +340,12 @@ var flickr2commons = {
 
 			o.information_template = w ;
 			callback ( o ) ;
-			
-		} , 'json' ) ;
+
+		} , 'json' ) . fail ( function ( jqXHR , textStatus , errorThrown ) {
+			o.error = 'Flinfo request failed: ' + textStatus ;
+			console.error ( 'generateInformationTemplate request failed for', o.photo.id, ':', textStatus , errorThrown , jqXHR ) ;
+			callback ( o ) ;
+		} ) ;
 	} ,
 	uploadFileToCommons : function ( o , callback ) {
 		var me = this ;
