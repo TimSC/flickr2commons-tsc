@@ -38,7 +38,7 @@ function ucFirst(string) {
 Vue.component ( 'flickr-file' , {
 	props : [ 'file' , 'hide_files_on_commons' ] ,
 	data : function () { return { new_title:'' , new_description:'' , thumbnail_url:'' , categories:'' , flickr_description:'',
-		is_checked:true , checking_filename:true , filename_exists:false , simple_filename:true } } ,
+		is_checked:false , checking_filename:true , filename_exists:false , simple_filename:true } } ,
 	created : function () {
 		var me = this ;
 		me.new_title = flickr2commons.generateFilenameForCommons ( me.file , tt.t('default_flickr_file_name') ) ;
@@ -225,6 +225,7 @@ var MainPage = Vue.extend ( {
 			me.running = false ;
 			me.last_message = '' ;
 			me.last_error = msg ;
+			console.error ( msg ) ;
 		} ,
 		checkLogin : function () {
 			var me = this ;
@@ -583,6 +584,7 @@ var MainPage = Vue.extend ( {
 					me.transfers_running-- ;
 					file.f2c_status = 'ERROR' ;
 					file_node.find('div.info_message').text(o.error) ;
+					console.error ( 'generateInformationTemplate failed for', o.photo.id, ':', o.error ) ;
 					setTimeout ( function(){me.transferAll()} , 10 ) ; // Start next one
 					return ;
 				}
@@ -603,10 +605,13 @@ var MainPage = Vue.extend ( {
 					} else {
 						file.f2c_status = 'ERROR' ;
 						file_node.find('div.info_message').text(o.error) ;
+						console.error ( 'Transfer failed for', o.filename_on_commons, ':', o.error ) ;
 					}
 
 					// Logging
-					$.getJSON ( 'https://tools.wmflabs.org/magnustools/logger.php?tool=flickr2commons&method=upload to commons&callback=?' , function(j){} ) ;
+					if ( flickr2commons.enable_upload_logging ) {
+						$.getJSON ( 'https://tools.wmflabs.org/magnustools/logger.php?tool=flickr2commons&method=upload to commons&callback=?' , function(j){} ) ;
+					}
 
 					setTimeout ( function(){me.transferAll()} , 10 ) ; // Start next one
 				} ) ;
@@ -674,9 +679,11 @@ $(document).ready ( function () {
 		if ( typeof d.data == 'object' ) {
 			flickr2commons.flickr_api_key = d.data.flickr_key ;
 			flickr2commons.default_max_photos = d.data.max_photos || 500 ;
+			flickr2commons.enable_upload_logging = !!d.data.enable_upload_logging ;
 		} else {
 			flickr2commons.flickr_api_key = d.data ;
 			flickr2commons.default_max_photos = 500 ;
+			flickr2commons.enable_upload_logging = false ;
 		}
 		fin() ;
 	} , 'json' ) ;

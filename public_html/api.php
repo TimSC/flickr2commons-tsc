@@ -12,6 +12,12 @@ function duplicate_checks_enabled () {
 	return !preg_match ( '/^(0|false|no|off)$/i' , trim ( $value ) ) ;
 }
 
+function upload_logging_enabled () {
+	$value = getenv ( 'F2C_ENABLE_UPLOAD_LOGGING' ) ;
+	if ( $value === false || trim ( $value ) == '' ) return false ;
+	return (bool) preg_match ( '/^(1|true|yes|on)$/i' , trim ( $value ) ) ;
+}
+
 function urlPathBatchGenerator ( $data , $batch_size = 5000 ) {
 	global $db ;
 	$paths = [] ;
@@ -79,7 +85,8 @@ error_reporting(E_ALL);
 	if ( $max_photos === false || trim($max_photos) == '' ) $max_photos = 500 ;
 	$out['data'] = [
 		'flickr_key' => getenv('FLICKR_ACCESS_KEY') ,
-		'max_photos' => $max_photos * 1
+		'max_photos' => $max_photos * 1 ,
+		'enable_upload_logging' => upload_logging_enabled()
 	] ;
 
 } else if ( $action == 'check_existing_commons_filenames' ) {

@@ -506,7 +506,7 @@ class Widar {
 		else $server = 'commons.wikimedia.org' ;
 		$this->ensureAuth() ;
 		if ( $url == '' ) throw new Exception ( "No URL given" ) ;
-		if ( !$this->oa->doUploadFromURL ( $url , $new_file_name , $description , $comment , $ignore_warnings ) ) throw new Exception ( $oa->error ) ;
+		if ( !$this->oa->doUploadFromURL ( $url , $new_file_name , $description , $comment , $ignore_warnings ) ) throw new Exception ( $this->oa->error ) ;
 	}
 
 	public function sdc_tag ( $json , $summary = '' ) {

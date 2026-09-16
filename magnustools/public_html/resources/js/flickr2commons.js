@@ -6,6 +6,7 @@ var flickr2commons = {
 	flickr_api_url : 'https://flickr.com/services/rest' ,
 	flickr_api_key : '' ,
 	default_max_photos : 500 ,
+	enable_upload_logging : false ,
 	is_authorized : false ,
 	userinfo : {} ,
 	extras : 'description,license,date_taken,geo,tags,url_o,url_l,url_m,url_q,url_s,path_alias,original_format' ,
@@ -369,9 +370,14 @@ var flickr2commons = {
 						}
 					}
 				}
+				if ( o.error != '' ) console.error ( 'uploadFileToCommons failed for', o.filename_on_commons, ':', o.error, d ) ;
 			}
 			callback(o);
-		} , 'json' ) . fail ( function () { o.error = 'Upload failed for unknown reasons' ; callback(o) } );
+		} , 'json' ) . fail ( function ( jqXHR , textStatus , errorThrown ) {
+			o.error = 'Upload failed for unknown reasons' ;
+			console.error ( 'uploadFileToCommons request failed for', o.filename_on_commons, ':', textStatus , errorThrown , jqXHR ) ;
+			callback(o) ;
+		} );
 
 	} ,
 	check_statement : function ( mid , property , target , callback ) {

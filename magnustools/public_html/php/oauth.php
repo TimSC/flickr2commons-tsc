@@ -1381,8 +1381,7 @@ class MW_OAuth {
 		$new_file_name = ucfirst ( str_replace ( ' ' , '_' , $new_file_name ) ) ;
 
 		// Download file
-		$basedir = '/data/project/magnustools/tmp' ;
-		$tmpfile = tempnam ( $basedir , 'doUploadFromURL' ) ;
+		$tmpfile = tempnam ( sys_get_temp_dir() , 'doUploadFromURL' ) ;
 		copy($url, $tmpfile) ;
 
 		// Next fetch the edit token
@@ -1414,9 +1413,12 @@ class MW_OAuth {
 		$res = $this->doApiQuery( $params , $ch , 'upload' );
 
 		unlink ( $tmpfile ) ;
-		
+
 		$this->last_res = $res ;
-		if ( $res->upload->result != 'Success' ) {
+		if ( !isset( $res->upload ) ) {
+			$this->error = isset( $res->error->info ) ? $res->error->info : 'Bad API response [uploadFromURL]: <pre>' . htmlspecialchars( var_export( $res, 1 ) ) . '</pre>' ;
+			return false ;
+		} else if ( $res->upload->result != 'Success' ) {
 			$this->error = $res->upload->result ;
 			return false ;
 		}
