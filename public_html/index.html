@@ -91,7 +91,7 @@ div.f2c_status_error {
 <template id='flickr-file-template'>
 	<div :class='"table-row flickr-file f2c_status_"+file.f2c_status.toLowerCase()' :flickr_file_id='file.id' :style='(hide_files_on_commons&&file.existing_filename_on_commons!=""&&file.f2c_status!="DONE")?"display:none":""'>
 		<div style='display:table-cell;padding:2px;min-width:20px;'>
-			<input v-if='!simple_filename && file.existing_filename_on_commons=="" && !filename_exists && (file.f2c_status=="READY" || file.f2c_status=="ERROR")' type='checkbox' v-model='is_checked' :id="'file_cb_'+file.id" class='form-control file_cb' @change='onCheckboxChange' />
+			<input v-if='!simple_filename && file.existing_filename_on_commons=="" && !filename_exists && (file.f2c_status=="READY" || file.f2c_status=="ERROR")' type='checkbox' v-model='file.checked' :id="'file_cb_'+file.id" class='form-control file_cb' @change='onCheckboxChange' />
 		</div>
 		<div class="flickr_thumb">
 			<a target='_blank' :href='file.page'>
@@ -156,7 +156,7 @@ div.f2c_status_error {
 				<div>
 					<span v-for='tag in file.tags.toLowerCase().split(/\s/).sort()' :tag='tag' class="badge badge-pill badge-secondary" style='margin-right:2px;'>{{tag}}</span>
 				</div>
-				<div class='info_message'></div>
+				<div class='info_message'>{{file.error_message}}</div>
 			</div>
 		</div>
 	</div>

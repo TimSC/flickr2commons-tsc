@@ -38,7 +38,7 @@ function ucFirst(string) {
 Vue.component ( 'flickr-file' , {
 	props : [ 'file' , 'hide_files_on_commons' ] ,
 	data : function () { return { new_title:'' , new_description:'' , thumbnail_url:'' , categories:'' , flickr_description:'',
-		is_checked:false , checking_filename:true , filename_exists:false , simple_filename:true } } ,
+		checking_filename:true , filename_exists:false , simple_filename:true } } ,
 	created : function () {
 		var me = this ;
 		me.new_title = flickr2commons.generateFilenameForCommons ( me.file , tt.t('default_flickr_file_name') ) ;
@@ -71,6 +71,7 @@ Vue.component ( 'flickr-file' , {
 			if ( typeof commons_filename_cache[me.new_title] != 'undefined' ) {
 				me.checking_filename = false ;
 				me.filename_exists = commons_filename_cache[me.new_title] ;
+				if ( me.filename_exists ) me.file.checked = false ; // Checkbox is about to be hidden
 				me.checkSimpleFilename() ;
 				return ;
 			}
@@ -89,6 +90,7 @@ Vue.component ( 'flickr-file' , {
 					} ) ;
 				}
 				commons_filename_cache[fn] = me.filename_exists ;
+				if ( me.filename_exists ) me.file.checked = false ; // Checkbox is about to be hidden
 				me.checkSimpleFilename() ;
 				me.checking_filename = false ;
 				me.onCheckboxChange() ;
@@ -136,7 +138,7 @@ var MainPage = Vue.extend ( {
 	props : [ '_user' , '_photoset' , '_group' , '_photo' , '_url' ] ,
 	data : function () { return { is_authorized:false , checking_auth:false , last_error:'' , url:'' , last_message:'' , running:false , files:[] , has_run:false , tags:{} ,
 		which_files:'all' , selected_tag:'' , prefix_string:'' , add2every_desc:'' , append_everywhere:'' , insert_before_license:'' , no_auto_desc:false , hide_files_on_commons:true ,
-		user:'' , photoset:'' , group:'' , photo:'' , tag:'' , max_pictures:'' , owners:{} , on_commons:0 , currently_selected:0 , filename_exists_on_commons:0 , transfers_running:0 , stop_transfers:false , form_is_visible:true , parsed_user_url:'' , flickr_key_override:''
+		user:'' , photoset:'' , group:'' , photo:'' , tag:'' , max_pictures:'' , owners:{} , on_commons:0 , currently_selected:0 , filename_exists_on_commons:0 , transfers_running:0 , stop_transfers:false , form_is_visible:true , parsed_user_url:'' , flickr_key_override:'' , transfer_queue:[]
 	} } ,
 	created : function () {
 		var me = this ;
@@ -156,7 +158,7 @@ var MainPage = Vue.extend ( {
 	methods : {
 		updateCurrentlySelected : function () {
 			var me = this ;
-			me.currently_selected = $('input.file_cb:checked').length ;
+			me.currently_selected = me.files.filter ( function ( f ) { return f.checked ; } ).length ;
 			me.filename_exists_on_commons = $('img.filename_exists_on_commons').length ;
 			me.on_commons = $('div.file_on_commons').length ;
 		} ,
@@ -194,18 +196,22 @@ var MainPage = Vue.extend ( {
 			var file_ids = me.getFileIDsByTagSelection() ;
 			$.each ( file_ids , function ( dummy , num ) {
 				var id = me.files[num].id ;
-				$('#file_cb_'+id).prop('checked', true);
+				var cb = document.getElementById('file_cb_'+id) ; // Only exists (and is settable) if the checkbox is actually shown
+				if ( !cb || cb.checked ) return ;
+				cb.checked = true ;
+				cb.dispatchEvent ( new Event('change') ) ; // Keep file.checked (v-model) in sync
 			} ) ;
-			me.updateCurrentlySelected() ;
 		} ,
 		doDeselectAll : function () {
 			var me = this ;
 			var file_ids = me.getFileIDsByTagSelection() ;
 			$.each ( file_ids , function ( dummy , num ) {
 				var id = me.files[num].id ;
-				$('#file_cb_'+id).prop('checked', false);
+				var cb = document.getElementById('file_cb_'+id) ;
+				if ( !cb || !cb.checked ) return ;
+				cb.checked = false ;
+				cb.dispatchEvent ( new Event('change') ) ; // Keep file.checked (v-model) in sync
 			} ) ;
-			me.updateCurrentlySelected() ;
 		} ,
 		doPrefix : function () {
 			var me = this ;
@@ -277,6 +283,8 @@ var MainPage = Vue.extend ( {
 			f.page = 'https://www.flickr.com/photos/' + f.owner + '/' + f.id + '/' ;
 			f.f2c_status = 'READY' ;
 			f.existing_filename_on_commons = '' ;
+			f.checked = false ;
+			f.error_message = '' ;
 			return f ;
 		} ,
 		checkProposedCommonsFilenames : function ( callback ) {
@@ -514,71 +522,52 @@ var MainPage = Vue.extend ( {
 			} , 10 ) ;
 		} ,
 		stopTransfers : function () {
-			var me = this ;
-			me.stop_transfers = true ;
-			setTimeout ( function () {
-				if ( !me.stop_transfers ) return ; // Stopped cleanly already
-				// transferAll's polling loop never came back (e.g. a hung request) - force a reset so the UI doesn't stay stuck
-				console.error ( 'Stop did not complete in time, forcing reset of stuck transfers' ) ;
-				$.each ( me.files , function ( k , file ) {
-					if ( file.f2c_status == 'TRANSFER' ) file.f2c_status = 'ERROR' ;
-				} ) ;
-				me.transfers_running = 0 ;
-				me.stop_transfers = false ;
-				$("div.flickr-file :input").attr("disabled", false);
-			} , 3000 ) ;
+			this.stop_transfers = true ; // transferNext() checks this before pulling each new item off the queue
 		} ,
+		// Bounded worker-pool: build the queue once, then run up to max_concurrent_transfers
+		// workers that each pull the next item as soon as they finish. No polling, no silent
+		// dead-ends - every path either continues the pipeline or checks for completion.
 		transferAll : function () {
 			var me = this ;
-			var flickr_file_ids = [] ;
-			$("div.flickr-file :input").attr("disabled", true);
-			$('input.file_cb:checked').each ( function () {
-				var div = $($(this).parents('div.flickr-file')).get(0) ;
-				var flickr_file_id = $(div).attr ( 'flickr_file_id' ) ;
-				flickr_file_ids.push ( flickr_file_id ) ;
+			me.transfer_queue = me.files.filter ( function ( file ) {
+				return file.checked && ( file.f2c_status == 'READY' || file.f2c_status == 'ERROR' ) ;
 			} ) ;
-			if ( flickr_file_ids.length == 0  ) {
-				// TODO finish?
-				me.stop_transfers = false ;
-				$("div.flickr-file :input").attr("disabled", false);
+			if ( me.transfer_queue.length == 0 ) return ;
+			me.stop_transfers = false ;
+			$("div.flickr-file :input").attr("disabled", true) ;
+			var workers = Math.min ( max_concurrent_transfers , me.transfer_queue.length ) ;
+			for ( var i = 0 ; i < workers ; i++ ) me.transferNext() ;
+		} ,
+		transferNext : function () {
+			var me = this ;
+			if ( me.stop_transfers || me.transfer_queue.length == 0 ) {
+				if ( me.transfers_running == 0 ) {
+					me.stop_transfers = false ;
+					$("div.flickr-file :input").attr("disabled", false) ;
+				}
 				return ;
 			}
-			if ( me.stop_transfers ) {
-				$("div.flickr-file :input").attr("disabled", false);
-				if ( me.transfers_running == 0 ) me.stop_transfers = false ;
-				return ;
-			}
+			var file = me.transfer_queue.shift() ;
+			file.checked = false ; // No longer "selected" - it's now in progress
+			file.error_message = '' ;
+			me.transfers_running++ ;
+			me.transferOne ( file , function () {
+				me.transfers_running-- ;
+				me.transferNext() ; // Pull the next queued item into this now-free worker slot
+			} ) ;
+		} ,
+		transferOne : function ( file , done ) {
+			var me = this ;
 
 			var o = {
-				photo : {
-					id : flickr_file_ids[0]
-				} ,
+				photo : { id : file.id } ,
 				auto_categories : false ,
-				best_size : {} ,
-				toolname:'flickr2commons',
+				best_size : { source : file.url_o } ,
+				toolname : 'flickr2commons' ,
 				error : ''
 			} ;
 
-			var internal_id ;
-			$.each ( me.files , function ( k , file ) {
-				if ( file.id != o.photo.id ) return ;
-				internal_id = k ;
-			} ) ;
-			if ( typeof internal_id == 'undefined' ) {
-				console.log ( "PROBLEM WITH FILE "+o.photo.id ) ;
-				return ;
-			}
-			var file = me.files[internal_id] ;
-			if ( file.f2c_status == 'TRANSFER' ) {
-				setTimeout ( function(){me.transferAll()} , 10 ) ; // Start next one
-				return ;
-			}
-			o.best_size.source = file.url_o ;
-
-			if ( me.transfers_running >= max_concurrent_transfers ) return ;
-			me.transfers_running++ ;
-
-			var file_node = $('div[flickr_file_id="'+o.photo.id+'"]') ;
+			var file_node = $('div[flickr_file_id="'+file.id+'"]') ;
 			o.filename_on_commons = $.trim(file_node.find('input.new_filename').val()) ;
 			while ( o.filename_on_commons.length > 250 ) o.filename_on_commons.replace ( /.(\.[a-z]+)$/i , '$1' ) ;
 			o.new_desc = $.trim(file_node.find('textarea.file_description').val()) ;
@@ -593,18 +582,11 @@ var MainPage = Vue.extend ( {
 
 			file.f2c_status = 'TRANSFER' ;
 			flickr2commons.generateInformationTemplate ( o , function ( o ) {
-				// Check for error
-				if ( o.error!='' ) {
-					if ( me.transfers_running > 0 ) me.transfers_running-- ;
+				if ( o.error != '' ) {
 					file.f2c_status = 'ERROR' ;
-					file_node.find('div.info_message').text(o.error) ;
+					file.error_message = o.error ;
 					console.error ( 'generateInformationTemplate failed for', o.photo.id, ':', o.error ) ;
-					Vue.nextTick ( function () { // Checkbox is re-created by v-if; wait for it before unchecking
-						$('#file_cb_'+o.photo.id).prop('checked', false) ;
-						me.updateCurrentlySelected() ;
-					} ) ;
-					setTimeout ( function(){me.transferAll()} , 10 ) ; // Start next one
-					return ;
+					return done() ;
 				}
 
 				// Complete description
@@ -616,18 +598,13 @@ var MainPage = Vue.extend ( {
 				if ( $.trim(me.append_everywhere)!='' ) o.information_template = $.trim(o.information_template+"\n"+$.trim(me.append_everywhere)) ;
 
 				flickr2commons.uploadFileToCommons ( o , function ( o ) {
-					if ( me.transfers_running > 0 ) me.transfers_running-- ;
 					if ( o.error=='' ) {
 						file.f2c_status = 'DONE' ;
 						file.existing_filename_on_commons = o.filename_on_commons ;
 					} else {
 						file.f2c_status = 'ERROR' ;
-						file_node.find('div.info_message').text(o.error) ;
+						file.error_message = o.error ;
 						console.error ( 'Transfer failed for', o.filename_on_commons, ':', o.error ) ;
-						Vue.nextTick ( function () { // Checkbox is re-created by v-if; wait for it before unchecking
-							$('#file_cb_'+o.photo.id).prop('checked', false) ;
-							me.updateCurrentlySelected() ;
-						} ) ;
 					}
 
 					// Logging
@@ -635,12 +612,9 @@ var MainPage = Vue.extend ( {
 						$.getJSON ( 'https://tools.wmflabs.org/magnustools/logger.php?tool=flickr2commons&method=upload to commons&callback=?' , function(j){} ) ;
 					}
 
-					setTimeout ( function(){me.transferAll()} , 10 ) ; // Start next one
+					done() ;
 				} ) ;
 			} ) ;
-
-			setTimeout ( function(){me.transferAll()} , 10 ) ; // Start next one
-			setTimeout ( function(){me.transferAll()} , 10 ) ; // Start next one
 		}
 	} ,
 	template : '#main-page-template'
