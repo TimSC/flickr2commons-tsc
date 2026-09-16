@@ -247,6 +247,7 @@ class Widar {
 				$out['res'] = $this->oa->last_res??'' ;
 				$out['result'] = $this->result??'' ; # For get_rights
 				$out['error'] = $error_message??'' ;
+				$out['retries'] = $this->oa->retry_log??[] ;
 				$this->output_bot ( $out , $callback ) ;
 			} else {
 				$this->output_widar_header() ;
@@ -265,6 +266,7 @@ class Widar {
 		$out['jle'] = $this->json_last_error??'' ;
 		$out['res'] = $this->oa->last_res??'' ;
 		$out['result'] = $this->result??'' ; # For get_rights
+		$out['retries'] = $this->oa->retry_log??[] ;
 
 		if ( !$ret ) {} # No action found, return false
 		else if ( $botmode ) {

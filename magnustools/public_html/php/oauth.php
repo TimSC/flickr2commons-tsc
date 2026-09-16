@@ -514,8 +514,11 @@ class MW_OAuth {
 			print "<hr/>" ;
 		}
 
+		if ( !isset ( $this->retry_log ) ) $this->retry_log = [] ;
+
 		if ( !$data ) {
 			$this->error = 'curl error talking to the API: ' . curl_error( $ch ) ;
+			$this->retry_log[] = "{$this->error} -- retrying in 10s ({$iterations_left} attempts left)" ;
 			$ch = null ;
 			sleep ( 10 ) ;
 			return $this->doApiQuery( $post , $ch , $mode , $iterations_left-1 , $last_maxlag ) ;
@@ -523,6 +526,7 @@ class MW_OAuth {
 		$ret = json_decode( $data );
 		if ( $ret == null ) {
 			$this->error = 'Invalid JSON from the API: ' . substr( $data , 0 , 500 ) ;
+			$this->retry_log[] = "{$this->error} -- retrying in 10s ({$iterations_left} attempts left)" ;
 			$ch = null ;
 			sleep ( 10 ) ;
 			return $this->doApiQuery( $post , $ch , $mode , $iterations_left-1 , $last_maxlag ) ;
@@ -532,11 +536,14 @@ class MW_OAuth {
 		if ( isset($ret->error) and isset($ret->error->code) and $ret->error->code == 'maxlag' ) {
 			$lag = $maxlag * 1 ;
 			if ( isset($ret->error->lag) ) $last_maxlag = $ret->error->lag*1 + $maxlag*1 ;
+			$this->retry_log[] = "API reported maxlag={$lag}s -- retrying in {$lag}s ({$iterations_left} attempts left)" ;
 			sleep ( $lag ) ;
 			$ch = null ;
 			$ret = $this->doApiQuery( $post, $ch , '' , $iterations_left-1 , $last_maxlag*1 ) ;
+		} else if ( isset($ret->error) ) {
+			$this->retry_log[] = 'API returned an error: ' . json_encode ( $ret->error ) ;
 		}
-		
+
 		return $ret ;
 	}
 

@@ -294,6 +294,9 @@ var flickr2commons = {
 		} ;
 
 		$.get ( me.flinfo , params , function ( d ) {
+			if ( d.retries && d.retries.length ) {
+				$.each ( d.retries , function ( dummy , msg ) { console.warn ( 'Flinfo retry for', o.photo.id, ':', msg ) ; } ) ;
+			}
 			if ( undefined === d.wiki || d.wiki.status != 0 ) {
 				if ( d.wiki.status == 1 ) o.error = "Flinfo server failure. Try again." ;
 				else if ( d.wiki.status == 3 ) o.error = "Flinfo internal error." ;
@@ -343,7 +346,7 @@ var flickr2commons = {
 
 		} , 'json' ) . fail ( function ( jqXHR , textStatus , errorThrown ) {
 			o.error = 'Flinfo request failed: ' + textStatus ;
-			console.error ( 'generateInformationTemplate request failed for', o.photo.id, ':', textStatus , errorThrown , jqXHR ) ;
+			console.error ( 'generateInformationTemplate request failed for', o.photo.id, ':', textStatus , errorThrown , 'HTTP', jqXHR.status , '-' , jqXHR.responseText ) ;
 			callback ( o ) ;
 		} ) ;
 	} ,
@@ -363,6 +366,9 @@ var flickr2commons = {
 		} ;
 		
 		$.post ( me.oauth_uploader_base , params , function ( d ) {
+			if ( d.retries && d.retries.length ) {
+				$.each ( d.retries , function ( dummy , msg ) { console.warn ( 'Commons API retry for', o.filename_on_commons, ':', msg ) ; } ) ;
+			}
 			if ( ''+d.error == 'OK' ) {
 				o.filename_on_commons = d.res.upload.filename ;
 			} else {
@@ -377,12 +383,12 @@ var flickr2commons = {
 						}
 					}
 				}
-				if ( o.error != '' ) console.error ( 'uploadFileToCommons failed for', o.filename_on_commons, ':', o.error, d ) ;
+				if ( o.error != '' ) console.error ( 'uploadFileToCommons failed for', o.filename_on_commons, ':', o.error, '- full response:', d ) ;
 			}
 			callback(o);
 		} , 'json' ) . fail ( function ( jqXHR , textStatus , errorThrown ) {
 			o.error = 'Upload failed for unknown reasons' ;
-			console.error ( 'uploadFileToCommons request failed for', o.filename_on_commons, ':', textStatus , errorThrown , jqXHR ) ;
+			console.error ( 'uploadFileToCommons request failed for', o.filename_on_commons, ':', textStatus , errorThrown , 'HTTP', jqXHR.status , '-' , jqXHR.responseText ) ;
 			callback(o) ;
 		} );
 
