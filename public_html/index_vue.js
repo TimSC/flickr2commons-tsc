@@ -17,7 +17,6 @@ function getUrlVars () {
 
 	var add = [] ;
 	if ( typeof params.tags != 'undefined' ) add.push ( 'tag='+encodeURIComponent(params.tags) ) ;
-	if ( typeof params.maxpics != 'undefined' ) add.push ( 'max_pictures='+encodeURIComponent(params.maxpics) ) ;
 
 	var url = '/' ;
 	if ( typeof params.userid != 'undefined' ) url = '/user/' + encodeURIComponent ( params.userid ) ;
@@ -137,12 +136,12 @@ var MainPage = Vue.extend ( {
 	props : [ '_user' , '_photoset' , '_group' , '_photo' , '_url' ] ,
 	data : function () { return { is_authorized:false , checking_auth:false , last_error:'' , url:'' , last_message:'' , running:false , files:[] , has_run:false , tags:{} ,
 		which_files:'all' , selected_tag:'' , prefix_string:'' , add2every_desc:'' , append_everywhere:'' , no_auto_desc:false , hide_files_on_commons:true ,
-		user:'' , photoset:'' , group:'' , photo:'' , tag:'' , max_pictures:'' , owners:{} , on_commons:0 , currently_selected:0 , filename_exists_on_commons:0 , transfers_running:0 , stop_transfers:false , form_is_visible:true
+		user:'' , photoset:'' , group:'' , photo:'' , tag:'' , max_pictures:'' , owners:{} , on_commons:0 , currently_selected:0 , filename_exists_on_commons:0 , transfers_running:0 , stop_transfers:false , form_is_visible:true , parsed_user_url:''
 	} } ,
 	created : function () {
 		var me = this ;
 		var do_run = false ;
-		if ( typeof me.$route.query.max_pictures != 'undefined' ) me.max_pictures = parseInt ( me.$route.query.max_pictures ) ;
+		me.max_pictures = flickr2commons.default_max_photos ;
 		if ( typeof me.$route.query.tag != 'undefined' ) me.tag = me.$route.query.tag ;
 		$.each ( [ 'user' , 'photoset' , 'group' , 'photo' , 'url' ] , function ( k , v ) {
 			if ( typeof me['_'+v] == 'undefined' ) return ;
@@ -239,7 +238,8 @@ var MainPage = Vue.extend ( {
 		} ,
 		getFlickrFiles : function ( params ) {
 			var me = this ;
-			flickr2commons.getFlickrFiles ( params , 1 , (me.max_pictures*1) , me.tag , function ( d ) {
+			var max_pictures = parseInt(me.max_pictures) || flickr2commons.default_max_photos ;
+			flickr2commons.getFlickrFiles ( params , 1 , max_pictures , me.tag , function ( d ) {
 				if ( d.status == 'RUNNING' ) {
 					me.last_message = d.so_far + ' files found so far (' + parseInt(d.page*100/d.pages) + '% done)' ;
 					return ;
@@ -417,7 +417,7 @@ var MainPage = Vue.extend ( {
 		} ,
 		doRunUser : function ( user ) {
 			var me = this ;
-			flickr2commons.resolveUsername ( user , function ( user_id ) {
+			function runForUserID ( user_id ) {
 				if ( user_id == '' ) return me.logError ( "No such user: "+user ) ;
 				router.push ( '/user/'+user_id+me.getRouteParams() ) ;
 				var params = {
@@ -426,7 +426,16 @@ var MainPage = Vue.extend ( {
 					user_id : user_id
 				} ;
 				me.getFlickrFiles ( params ) ;
-			} ) ;
+			}
+			if ( me.parsed_user_url != '' ) {
+				flickr2commons.lookupUserFromURL ( me.parsed_user_url , function ( user_id ) {
+					me.parsed_user_url = '' ;
+					if ( typeof user_id != 'undefined' && user_id != '' ) return runForUserID ( user_id ) ;
+					flickr2commons.resolveUsername ( user , runForUserID ) ;
+				} ) ;
+			} else {
+				flickr2commons.resolveUsername ( user , runForUserID ) ;
+			}
 		} ,
 		doRunPhotoset : function ( photoset_id ) {
 			var me = this ;
@@ -456,7 +465,6 @@ var MainPage = Vue.extend ( {
 			var me = this ;
 			var params = [] ;
 			if ( me.tag != '' ) params.push ( 'tag='+encodeURIComponent(me.tag) ) ;
-			if ( me.max_pictures != '' ) params.push ( 'max_pictures='+encodeURIComponent(me.max_pictures) ) ;
 			if ( params.length == 0 ) return '' ;
 			return '?' + params.join('&') ;
 		} ,
@@ -467,6 +475,10 @@ var MainPage = Vue.extend ( {
 			else if ( (m=me.url.match(/\/albums\/(\d+)/)) != null ) me.photoset = m[1] ;
 			else if ( (m=me.url.match(/\/groups\/([^\/]+)/)) != null ) me.group = m[1] ;
 			else if ( (m=me.url.match(/\/people\/([^\/]+)/)) != null ) me.user = m[1] ;
+			else if ( (m=me.url.match(/\/photos\/([^\/?#]+)/)) != null ) {
+				me.user = m[1] ;
+				me.parsed_user_url = me.url ;
+			}
 			else return ;
 			me.url = '' ;
 		} ,
@@ -659,7 +671,13 @@ $(document).ready ( function () {
 		meta:'all',
 		action:'get_flickr_key'
 	} , function ( d ) {
-		flickr2commons.flickr_api_key = d.data ;
+		if ( typeof d.data == 'object' ) {
+			flickr2commons.flickr_api_key = d.data.flickr_key ;
+			flickr2commons.default_max_photos = d.data.max_photos || 500 ;
+		} else {
+			flickr2commons.flickr_api_key = d.data ;
+			flickr2commons.default_max_photos = 500 ;
+		}
 		fin() ;
 	} , 'json' ) ;
 } ) ;

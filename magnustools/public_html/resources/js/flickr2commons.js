@@ -5,6 +5,7 @@ var flickr2commons = {
 	oauth_uploader_api : 'https://tools.wmflabs.org/magnustools/oauth_uploader.php?botmode=1&callback=?' ,
 	flickr_api_url : 'https://flickr.com/services/rest' ,
 	flickr_api_key : '' ,
+	default_max_photos : 500 ,
 	is_authorized : false ,
 	userinfo : {} ,
 	extras : 'description,license,date_taken,geo,tags,url_o,url_l,url_m,url_q,url_s,path_alias,original_format' ,
@@ -75,6 +76,22 @@ var flickr2commons = {
 			}
 		} ) . fail ( function () {callback()} ) ;
 	} ,
+	lookupUserFromURL : function ( url , callback ) {
+		var me = this ;
+		var params = {
+			method : 'flickr.urls.lookupUser' ,
+			url : url ,
+			api_key : me.flickr_api_key ,
+			format : 'json'
+		} ;
+		$.getJSON ( me.flickr_api_url+'/?jsoncallback=?' , params , function ( d ) {
+			if ( d.stat == 'ok' && typeof d.user != 'undefined' && typeof d.user.id != 'undefined' ) {
+				callback ( d.user.id ) ;
+			} else {
+				callback () ;
+			}
+		} ) . fail ( function () {callback()} ) ;
+	} ,
 	resolveGroupName : function ( group , callback ) {
 		var me = this ;
 		var params = {
@@ -95,14 +112,7 @@ var flickr2commons = {
 		var me = this ;
 		if ( max_pics == 0 ) max_pics = 999999999 ;
 		if ( typeof results == 'undefined' ) results = [] ;
-
-		if ( results.length >= max_pics ) {
-			callback ( {
-				status:'DONE' ,
-				results:results
-			} ) ;
-			return ;
-		}
+		var per_page = max_pics<500?max_pics:500 ;
 		
 		if ( tags != '' ) {
 			params.tags = tags ;
@@ -112,28 +122,9 @@ var flickr2commons = {
 	//	params.safe_search = 2 ;
 		params.api_key = me.flickr_api_key ;
 		params.extras = me.extras ;
-		params.per_page = max_pics<500?max_pics:500 ;
+		params.per_page = per_page ;
 		params.page = page ;
 		params.format = 'json' ;
-
-		var other_pages_running = 0 ;
-		var pages_loaded = 0 ;
-		var total_pages = 0 ;
-		function local_callback () {
-			pages_loaded++ ;
-			callback ( {
-				status:'RUNNING',
-				page:pages_loaded,
-				pages:total_pages,
-				so_far:results.length
-			} ) ;
-			other_pages_running-- ;
-			if ( other_pages_running > 0 ) return ;
-			callback ( {
-				status:'DONE' ,
-				results:results
-			} ) ;
-		}
 		
 		$.getJSON ( me.flickr_api_url+'/?jsoncallback=?' , params , function ( d ) {
 			if ( d.stat == 'fail' ) {
@@ -153,36 +144,10 @@ var flickr2commons = {
 				results.push ( v ) ;
 				if ( results.length >= max_pics ) return false ;
 			} ) ;
-
-			// Load the other pages in parallel
-			if ( d[params.result_key].page == 1 && d[params.result_key].pages > 1 && results.length < max_pics ) {
-				pages_loaded = 1 ;
-				total_pages = d[params.result_key].pages ;
-				callback ( {
-					status:'RUNNING',
-					page:pages_loaded,
-					pages:total_pages,
-					so_far:results.length
-				} ) ;
-				for ( var i = 2 ; i <= total_pages ; i++ ) {
-					other_pages_running++ ;
-					me.getFlickrFiles ( params , i , max_pics , tags , local_callback , results ) ;
-				}
-			} else {
-				callback ( {
-					status:'DONE' ,
-					results:results
-				} ) ;
-			}
-/*
-			if ( d[params.result_key].pages > d[params.result_key].page && results.length < max_pics ) { // Get 'em all
-				me.getFlickrFiles ( params , page+1 , max_pics , tags , callback , results ) ;
-			}
-			else callback ( {
+			callback ( {
 				status:'DONE' ,
-				results:results
+				results:results.slice(0,max_pics)
 			} ) ;
-*/
 		} ) ;
 	} ,
 	getFileInfoFromFlickr : function ( o , callback ) {

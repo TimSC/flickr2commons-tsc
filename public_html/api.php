@@ -75,7 +75,12 @@ error_reporting(E_ALL);
 
 } else if ( $action == 'get_flickr_key' ) {
 
-	$out['data'] = getenv('FLICKR_ACCESS_KEY') ;
+	$max_photos = getenv('F2C_MAX_PHOTOS') ;
+	if ( $max_photos === false || trim($max_photos) == '' ) $max_photos = 500 ;
+	$out['data'] = [
+		'flickr_key' => getenv('FLICKR_ACCESS_KEY') ,
+		'max_photos' => $max_photos * 1
+	] ;
 
 } else if ( $action == 'check_existing_commons_filenames' ) {
 
