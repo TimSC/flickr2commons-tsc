@@ -318,8 +318,11 @@ var MainPage = Vue.extend ( {
 					commons_filename_cache[filename] = d.data.files[filename_api] ;
 				} ) ;
 				callback() ;
-			} , 'json' )
-			
+			} , 'json' ) . fail ( function ( jqXHR , textStatus , errorThrown ) {
+				console.error ( 'checkProposedCommonsFilenames request failed:', textStatus , errorThrown , 'HTTP', jqXHR.status , '-' , jqXHR.responseText ) ;
+				callback() ; // Proceed without the filename-collision cache populated, rather than hang
+			} ) ;
+
 		} ,
 		checkFlickrFilesOnCommons : function () {
 			var me = this ;
@@ -346,7 +349,13 @@ var MainPage = Vue.extend ( {
 				me.running = false ;
 				me.has_run = true ;
 				me.updateCurrentlySelected() ;
-			} , 'json' ) ;
+			} , 'json' ) . fail ( function ( jqXHR , textStatus , errorThrown ) {
+				console.error ( 'checkFlickrFilesOnCommons request failed:', textStatus , errorThrown , 'HTTP', jqXHR.status , '-' , jqXHR.responseText ) ;
+				me.which_files = 'all' ;
+				me.has_run = true ;
+				me.logError ( 'Could not check which files already exist on Commons (' + textStatus + '). Files shown as new may already be on Commons - double check before transferring.' ) ;
+				me.updateCurrentlySelected() ;
+			} ) ;
 
 		} ,
 		finishFileLoad : function () {

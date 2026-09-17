@@ -51,19 +51,13 @@ var flickr2commons = {
 	} ,
 	resolveUsername : function ( user , callback ) {
 		var me = this ;
-		var params = {
-			method : 'flickr.people.findByUsername' ,
-			username : user ,
-			api_key : me.flickr_api_key ,
-			format : 'json'
-		} ;
-		$.getJSON ( me.flickr_api_url+'/?jsoncallback=?' , params , function ( d ) {
-			if ( d.stat == 'ok' && typeof d.user != 'undefined' && typeof d.user.nsid != 'undefined' ) {
-				callback ( d.user.nsid ) ;
-			} else { // Can't find NSID, probably the NSID already
-				callback ( user ) ;
-			}
-		} ) . fail ( function () {callback(user)} ) ;
+		// Try as a path alias (the URL slug in flickr.com/photos/<this>/, what people usually mean
+		// by "my Flickr username" today) - it's unambiguous, unlike the legacy username field, which
+		// is a separate, unrelated namespace that can collide with a different account entirely.
+		me.lookupUserFromURL ( 'https://www.flickr.com/photos/' + encodeURIComponent(user) + '/' , function ( nsid ) {
+			if ( typeof nsid != 'undefined' && nsid != '' ) return callback ( nsid ) ;
+			callback ( user ) ; // Can't find NSID, probably the NSID already
+		} ) ;
 	} ,
 	getUserInfo : function ( nsid , callback ) {
 		var me = this ;
@@ -111,7 +105,7 @@ var flickr2commons = {
 			} else { // Can't find NSID, probably the NSID already
 				callback ( group ) ;
 			}
-		} ) ;
+		} ) . fail ( function () { callback ( group ) ; } ) ;
 	} ,
 	getFlickrFiles : function ( params , page , max_pics , tags , callback , results ) {
 		var me = this ;
@@ -139,7 +133,13 @@ var flickr2commons = {
 			}
 			$.each ( d[params.result_key].photo , function ( k , v ) {
 				if ( undefined === me.licenses[v.license] ) return ; // No free license
-				
+
+				// flickr.photosets.getPhotos doesn't put 'owner' on each photo like
+				// flickr.photos.search/flickr.groups.pools.getPhotos do - it's only on the
+				// container once. Backfill it so links built from v.owner don't end up as
+				// '.../photos/undefined/<id>/'.
+				if ( undefined === v.owner && undefined !== d[params.result_key].owner ) v.owner = d[params.result_key].owner ;
+
 				// Here, we compensate for idiotic Flickr restrictions on free accounts
 				if ( undefined !== v.url_o ) v.url_best = v.url_o ;
 				else if ( undefined !== v.url_l ) v.url_best = v.url_l ;
@@ -153,6 +153,10 @@ var flickr2commons = {
 				status:'DONE' ,
 				results:results.slice(0,max_pics)
 			} ) ;
+		} ) . fail ( function ( jqXHR , textStatus , errorThrown ) {
+			$('#loading').hide() ;
+			console.error ( 'getFlickrFiles request failed:', textStatus , errorThrown , 'HTTP', jqXHR.status , '-' , jqXHR.responseText ) ;
+			callback ( { status:'ERROR' , error:'Request to Flickr failed: ' + textStatus } ) ;
 		} ) ;
 	} ,
 	getFileInfoFromFlickr : function ( o , callback ) {
@@ -165,7 +169,7 @@ var flickr2commons = {
 		} ;
 		$.getJSON ( me.flickr_api_url+'/?jsoncallback=?' , params , function ( d ) {
 			callback ( d ) ;
-		} ) ;
+		} ) . fail ( function () { callback ( {} ) ; } ) ;
 	} ,
 	getExistingCommonsFile : function ( o , callback ) {
 		var me = this ;
@@ -230,7 +234,7 @@ var flickr2commons = {
 		} ;
 		$.getJSON ( me.flickr_api_url+'/?jsoncallback=?' , params , function ( d ) {
 			callback ( d ) ;
-		} ) ;
+		} ) . fail ( function () { callback ( {} ) ; } ) ;
 
 	} ,
 	getBestSize : function ( o , callback ) {
