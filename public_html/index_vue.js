@@ -686,6 +686,8 @@ $(document).ready ( function () {
 			flickr2commons.flickr_api_key = d.data.flickr_key ;
 			flickr2commons.default_max_photos = d.data.max_photos || 500 ;
 			flickr2commons.enable_upload_logging = !!d.data.enable_upload_logging ;
+			flickr2commons.bug_report_url = d.data.bug_report_url || flickr2commons.bug_report_url ;
+			flickr2commons.discuss_url = d.data.discuss_url || flickr2commons.discuss_url ;
 		} else {
 			flickr2commons.flickr_api_key = d.data ;
 			flickr2commons.default_max_photos = 500 ;

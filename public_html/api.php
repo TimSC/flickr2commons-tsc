@@ -85,10 +85,18 @@ error_reporting(E_ALL);
 
 	$max_photos = getenv('F2C_MAX_PHOTOS') ;
 	if ( $max_photos === false || trim($max_photos) == '' ) $max_photos = 500 ;
+	$bug_report_url = getenv('F2C_BUG_REPORT_URL') ;
+	if ( $bug_report_url === false || trim($bug_report_url) == '' ) $bug_report_url = 'https://github.com/TimSC/flickr2commons-tsc/issues' ;
+
+	$discuss_url = getenv('F2C_DISCUSS_URL') ;
+	if ( $discuss_url === false || trim($discuss_url) == '' ) $discuss_url = 'https://meta.wikimedia.org/wiki/Talk:Flickr2commons-tsc' ;
+
 	$out['data'] = [
 		'flickr_key' => getenv('FLICKR_ACCESS_KEY') ,
 		'max_photos' => $max_photos * 1 ,
-		'enable_upload_logging' => upload_logging_enabled()
+		'enable_upload_logging' => upload_logging_enabled() ,
+		'bug_report_url' => $bug_report_url ,
+		'discuss_url' => $discuss_url
 	] ;
 
 } else if ( $action == 'check_existing_commons_filenames' ) {

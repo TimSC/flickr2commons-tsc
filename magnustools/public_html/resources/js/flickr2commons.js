@@ -8,6 +8,8 @@ var flickr2commons = {
 	flickr_api_key : '' ,
 	default_flickr_api_key : '' ,
 	default_max_photos : 500 ,
+	bug_report_url : 'https://github.com/TimSC/flickr2commons-tsc/issues' ,
+	discuss_url : 'https://meta.wikimedia.org/wiki/Talk:Flickr2commons-tsc' ,
 	enable_upload_logging : false ,
 	is_authorized : false ,
 	userinfo : {} ,
@@ -453,3 +455,5 @@ var flickr2commons = {
 		} , 'json' ) ;
 	}
 } ;
+
+document.title = flickr2commons.toolname ; // No tt="toolname" on <title> - uses the unified tool name, not the shared ToolTranslate dataset
