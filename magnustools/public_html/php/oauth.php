@@ -277,7 +277,10 @@ class MW_OAuth {
 			// We're using secret key signatures here.
 			'oauth_signature_method' => 'HMAC-SHA1',
 		] ;
-		if ( $callback!='' ) $query['oauth_callback'] = $callback ;
+		// oauth_callback must stay 'oob' here even when $callback is set - MediaWiki's OAuth
+		// extension rejects the request-token step with mwoauth-callback-not-oob otherwise, for
+		// any consumer registered with a fixed callback URL. $callback is used later (below) for
+		// the actual authorize-page redirect, which is the real place it belongs.
 		$url .= http_build_query( $query );
 		$signature = $this->sign_request( 'GET', $url );
 		$url .= "&oauth_signature=" . urlencode( $signature );

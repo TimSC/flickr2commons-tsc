@@ -60,7 +60,7 @@ div.f2c_status_error {
   <div class="collapse navbar-collapse" id="navbarSupportedContent">
     <ul class="navbar-nav mr-auto">
       <li class="nav-item" style='margin-right:10px;'>
-		<a href='#/' class="navbar-brand" tt='toolname'></a>
+		<a href='#/' class="navbar-brand">{{flickr2commons.toolname}}</a>
       </li>
 
       <li class="nav-item active">
@@ -70,13 +70,13 @@ div.f2c_status_error {
     </ul>
 
     <a style="margin:0px;padding:0px;margin-top:4px;margin-left:10px;" :href='flickr2commons.discuss_url' target='_blank'>
-    	<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Internet-talk-error.svg/32px-Internet-talk-error.svg.png" tt_title="discuss" border="0" width="32px">
+    	<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Internet-talk-error.svg/40px-Internet-talk-error.svg.png" tt_title="discuss" border="0" width="40px">
     </a>
     <a style="margin:0px;padding:0px;margin-top:4px;margin-left:10px;" :href='flickr2commons.bug_report_url' target='_blank'>
-    	<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Green_bug.svg/32px-Green_bug.svg.png" tt_title="issues" border="0" width="32px">
+    	<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Green_bug.svg/40px-Green_bug.svg.png" tt_title="issues" border="0" width="40px">
     </a>
     <a style="margin:0px;padding:0px;margin-top:4px;margin-left:10px;" href="/" target='_blank'>
-    	<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Toolforge_logo.svg/32px-Toolforge_logo.svg.png" tt_title="wmf_powered" border="0" width="32px">
+    	<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Toolforge_logo.svg/40px-Toolforge_logo.svg.png" tt_title="wmf_powered" border="0" width="40px">
     </a>
   </div>
 </nav>
@@ -115,16 +115,16 @@ div.f2c_status_error {
 						<input :id="'filename_'+file.id" type='text' class='form-control new_filename' v-model='new_title' @keyup='checkFilenameOnCommons' />
 					</div>
 					<div style='display:table-cell;white-space:nowrap;vertical-align:top;min-width:40px;text-align:right;'>
-						<span v-if='checking_filename'><img src='https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Symbol_dot_dot_dot_violet.svg/32px-Symbol_dot_dot_dot_violet.svg.png' /></span>
+						<span v-if='checking_filename'><img src='https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Symbol_dot_dot_dot_violet.svg/40px-Symbol_dot_dot_dot_violet.svg.png' /></span>
 						<span v-else-if='!checking_filename && filename_exists'>
 							<a target='_blank' :href="'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(new_title)" tt_title='file_exists_warning'>
-								<img src='https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Symbol_unrelated.svg/32px-Symbol_unrelated.svg.png' border='0' class='filename_exists_on_commons' />
+								<img src='https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Symbol_unrelated.svg/40px-Symbol_unrelated.svg.png' border='0' class='filename_exists_on_commons' />
 							</a>
 						</span>
 						<span v-else-if='simple_filename' tt_title='simple_filename'>
-							<img src='https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Symbol_opinion_vote.svg/32px-Symbol_opinion_vote.svg.png' border='0' class='filename_exists_on_commons' />
+							<img src='https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Symbol_opinion_vote.svg/40px-Symbol_opinion_vote.svg.png' border='0' class='filename_exists_on_commons' />
 						</span>
-						<span v-else><img src='https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Art%C3%ADculo_bueno.svg/32px-Art%C3%ADculo_bueno.svg.png' /></span>
+						<span v-else><img src='https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Art%C3%ADculo_bueno.svg/40px-Art%C3%ADculo_bueno.svg.png' /></span>
 					</div>
 				</div>
 				<div class='row' style='vertical-align:top;'>
