@@ -226,6 +226,16 @@ var MainPage = Vue.extend ( {
 			} ) ;
 			me.updateCurrentlySelected() ;
 		} ,
+		// Like tt.t(key), but never blank/red-debug-text for a not-yet-translated key: falls back to
+		// fallback_text instead. tt.t() can't be used directly for that because with highlight_missing
+		// enabled it returns a "<span style=...>key</span>" debug marker (a truthy string) for any key
+		// missing from every loaded language, so a simple `tt.t(key) || fallback_text` can't detect that case.
+		ttOrDefault : function ( key , fallback_text ) {
+			if ( typeof tt == 'undefined' ) return fallback_text ;
+			var cache = tt.translation_cache[tt.language] ;
+			if ( typeof cache == 'undefined' || typeof cache[key] == 'undefined' ) return fallback_text ;
+			return cache[key] ;
+		} ,
 		logError : function ( msg ) {
 			var me = this ;
 			me.running = false ;
@@ -563,7 +573,7 @@ var MainPage = Vue.extend ( {
 				photo : { id : file.id } ,
 				auto_categories : false ,
 				best_size : { source : file.url_o } ,
-				toolname : 'flickr2commons' ,
+				toolname : flickr2commons.toolname ,
 				error : ''
 			} ;
 
@@ -609,7 +619,7 @@ var MainPage = Vue.extend ( {
 
 					// Logging
 					if ( flickr2commons.enable_upload_logging ) {
-						$.getJSON ( 'https://tools.wmflabs.org/magnustools/logger.php?tool=flickr2commons&method=upload to commons&callback=?' , function(j){} ) ;
+						$.getJSON ( 'https://tools.wmflabs.org/magnustools/logger.php?callback=?' , { tool:flickr2commons.toolname , method:'upload to commons' } , function(j){} ) ;
 					}
 
 					done() ;
@@ -654,7 +664,7 @@ $(document).ready ( function () {
 
 	// Load interface translations
 	tt = new ToolTranslation ( {
-		tool : 'flickr2commons' ,
+		tool : 'flickr2commons' , // Deliberately NOT flickr2commons.toolname: this is the shared ToolTranslate dataset name from upstream, not this fork's identity
 		fallback : 'en' ,
 		highlight_missing : true ,
 		onLanguageChange : function ( new_lang ) {

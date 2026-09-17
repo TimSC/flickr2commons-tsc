@@ -1,5 +1,7 @@
 <?php
 
+define ( 'TOOL_NAME' , 'flickr2commons-tsc' ) ; // Single source of truth for this tool's Toolforge identity (OAuth session name, default host)
+
 require_once ( 'php/common.php' ) ;
 
 $action = get_request ( 'action' , '' ) ;
@@ -116,10 +118,10 @@ error_reporting(E_ALL);
 } else {
 
 	require_once 'php/Widar.php' ;
-	$widar = new \Widar ( 'flickr2commons-ng' ) ;
-	$host = $_SERVER['HTTP_HOST'] ?? 'flickr2commons-ng.toolforge.org' ;
+	$widar = new \Widar ( TOOL_NAME ) ;
+	$host = $_SERVER['HTTP_HOST'] ?? TOOL_NAME . '.toolforge.org' ;
 	$is_localhost = preg_match ( '/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/' , $host ) ;
-	$base_url = $is_localhost ? "http://$host/" : 'https://flickr2commons-ng.toolforge.org/' ;
+	$base_url = $is_localhost ? "http://$host/" : 'https://' . TOOL_NAME . '.toolforge.org/' ;
 	$widar->attempt_verification_auto_forward ( $base_url ) ;
 	if ( !$is_localhost ) $widar->authorization_callback = $base_url . 'api.php' ;
 	if ( $widar->render_reponse ( true ) ) exit ( 0 ) ;

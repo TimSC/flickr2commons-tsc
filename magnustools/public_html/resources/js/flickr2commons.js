@@ -1,5 +1,6 @@
 
 var flickr2commons = {
+	toolname : 'flickr2commons-tsc' , // Identifies this tool: upload edit summaries, usage logging. NOT the ToolTranslate dataset name (that stays 'flickr2commons', shared with upstream).
 	flinfo: 'https://fist.toolforge.org/flinfo/flinfo.php' , // '/flickr2commons/flinfo_proxy.php'
 	oauth_uploader_base : 'https://tools.wmflabs.org/magnustools/oauth_uploader.php' ,
 	oauth_uploader_api : 'https://tools.wmflabs.org/magnustools/oauth_uploader.php?botmode=1&callback=?' ,
@@ -360,7 +361,7 @@ var flickr2commons = {
 			url:o.best_size.source,
 			desc:o.information_template,
 			ignorewarnings:1,
-			comment:'Transferred from Flickr via #'+(o.toolname||widar.toolname),
+			comment:'Transferred from Flickr via #'+(o.toolname||me.toolname),
 			rand:Math.random(),
 			botmode:1
 		} ;
